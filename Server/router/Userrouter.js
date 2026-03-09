@@ -23,8 +23,6 @@ const signinValidationSchema = zod.object({
 });
 
 UserRouter.post("/signup", async (req, res) => {
-  console.log("htt");
-
   try {
     const validationResult = userValidationSchema.safeParse(req.body);
 

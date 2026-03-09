@@ -24,7 +24,6 @@ model User{
   updatedAt     DateTime @updatedAt
   spaces   Space[]
 }
-
 model Space {
   id            String        @id @default(uuid())
   space_name          String  @unique
@@ -42,7 +41,6 @@ model Space {
   questions      question[]
  
 }
-
 model question{
   id       String   @id @default(uuid())
   spaceId  String

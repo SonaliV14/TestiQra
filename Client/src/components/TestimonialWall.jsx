@@ -6,7 +6,6 @@ import Masonry from 'react-masonry-css';
 import axios from 'axios';
 import { BACKEND_URL } from '../utils/DB';
 
-// Helper function moved outside components
 const formatDate = (dateString) => {
     const options = {
         year: 'numeric',
@@ -80,15 +79,14 @@ const TestimonialWall = () => {
         700: 1
     };
 
-    // Custom styles for masonry grid
     const masonryStyles = {
         '.my-masonry-grid': {
             display: 'flex',
-            marginLeft: '-30px', /* gutter size offset */
+            marginLeft: '-30px', 
             width: 'auto'
         },
         '.my-masonry-grid_column': {
-            paddingLeft: '30px', /* gutter size */
+            paddingLeft: '30px', 
             backgroundClip: 'padding-box'
         }
     };

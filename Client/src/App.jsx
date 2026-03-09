@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import Navbar from './components/Navbar';
+// import { useEffect, useState } from 'react';
+// import Navbar from './components/Navbar';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import Signup from './components/Signup';
 import Signin from './components/Signin';
 import Landingpage from './components/Landingpage';
-import { ToastContainer } from 'react-toastify';
-import Thankyou from './components/Thankyou';
+// import { ToastContainer } from 'react-toastify';
+// import Thankyou from './components/Thankyou';
 import Dashboard from './components/Dashboard';
 import MergedSpaceCreation from './components/MergedSpaceCreation';
 import Space from './components/Space';
@@ -50,3 +50,5 @@ function App() {
 }
 
 export default App;
+
+
