@@ -1,3 +1,3 @@
-const JWT_SECRET = "dhruv1234";
+const JWT_SECRET = "chutiya";
 
 export default JWT_SECRET;
