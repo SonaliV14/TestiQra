@@ -8,6 +8,7 @@ import SendtestimonialsRouter from "./router/SendTestimonials.js";
 import FetchTestimonials from "./router/FetchTestimonials.js";
 import LikedTestimonialsRouter from "./router/Likedtestimonials.js";
 import editRouter from "./router/editspace.js";
+import AiRouter from "./router/AiRouter.js";
 const app = express();
 
 app.use(cors());
@@ -20,6 +21,7 @@ app.use("/api/v1/sendtestimonials", SendtestimonialsRouter);
 app.use("/api/v1/fetchtestimonials", FetchTestimonials);
 app.use("/api/v1", LikedTestimonialsRouter);
 app.use("/api/v1/edit", editRouter);
+app.use("/api/v1/ai/generate", AiRouter);  
 
 // req and res (request and response)
 app.get("/", (req, res) => {

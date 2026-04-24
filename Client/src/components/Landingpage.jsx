@@ -55,9 +55,9 @@ export default function Landingpage() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-              <MessageSquare size={16} />
+              <Sparkles size={16} />
             </div>
-            <span className="font-bold text-lg">TestiGatherer</span>
+            <span className="font-bold text-lg">TestiQra</span>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => navigate('/signin')}
@@ -74,14 +74,12 @@ export default function Landingpage() {
 
       {/* ── Hero ── */}
       <section ref={heroRef} className="relative pt-28 pb-20 px-6 overflow-hidden">
-        {/* Gradient Background Mesh */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-violet-600/10 rounded-full blur-3xl" />
           <div className="absolute top-40 left-20 w-[300px] h-[300px] bg-indigo-500/8 rounded-full blur-3xl"
             style={{ transform: `translate(${mousePos.x * 20}px, ${mousePos.y * 20}px)` }} />
           <div className="absolute top-20 right-20 w-[200px] h-[200px] bg-violet-400/8 rounded-full blur-3xl"
             style={{ transform: `translate(${-mousePos.x * 15}px, ${mousePos.y * 15}px)` }} />
-          {/* Grid pattern */}
           <svg className="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
@@ -214,7 +212,7 @@ export default function Landingpage() {
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                 Ready to collect social proof that converts?
               </h2>
-              <p className="text-gray-400 mb-8 text-lg">Join hundreds of businesses that trust TestiGatherer</p>
+              <p className="text-gray-400 mb-8 text-lg">Join hundreds of businesses that trust TestiQra</p>
               <button onClick={() => navigate('/signup')}
                 className="group inline-flex items-center gap-2 px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl font-semibold text-base transition-all shadow-2xl shadow-violet-500/25">
                 Get started for free
@@ -225,9 +223,8 @@ export default function Landingpage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-gray-800 py-8 px-6 text-center text-gray-600 text-sm">
-        <p>© 2024 TestiGatherer. Built with ❤️</p>
+        <p>© 2024 TestiQra. Built with ❤️</p>
       </footer>
     </div>
   );

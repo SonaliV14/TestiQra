@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Plus, X, Settings, LogOut, Search, ChevronRight, Star, MessageSquare, Video, Heart } from 'lucide-react';
+import {
+  Plus, X, Settings, LogOut, Search, ChevronRight,
+  Star, MessageSquare, Heart, Sparkles, Video, FileText
+} from 'lucide-react';
 
-const BACKEND_URL = "http://localhost:3001";
+const BACKEND_URL = 'http://localhost:3001';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -37,9 +40,9 @@ export default function Dashboard() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center">
-              <MessageSquare size={16} className="text-white" />
+              <Sparkles size={16} className="text-white" />
             </div>
-            <span className="text-white font-bold text-lg">TestiGatherer</span>
+            <span className="text-white font-bold text-lg">TestiQra</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded-xl px-3 py-2 w-56">
@@ -90,7 +93,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Loading Skeleton */}
+        {/* Loading */}
         {loading && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {[1, 2, 3].map(i => (
@@ -103,7 +106,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  {[1, 2, 3].map(j => <div key={j} className="h-10 bg-gray-800 rounded-xl" />)}
+                  {[1,2,3].map(j => <div key={j} className="h-10 bg-gray-800 rounded-xl" />)}
                 </div>
               </div>
             ))}
@@ -114,7 +117,8 @@ export default function Dashboard() {
         {!loading && filtered.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
             {filtered.map(space => (
-              <SpaceCard key={space.id} space={space} onClick={() => navigate(`/space/${space.space_name}`)}
+              <SpaceCard key={space.id} space={space}
+                onClick={() => navigate(`/space/${space.space_name}`)}
                 onEdit={(e) => { e.stopPropagation(); navigate(`/edit/${space.space_name}`); }} />
             ))}
           </div>
@@ -133,15 +137,31 @@ export default function Dashboard() {
               </button>
             </div>
             <div className="p-5 space-y-3">
+              {/* From Scratch */}
               <button onClick={() => { navigate('/space-creation'); setShowPopup(false); }}
                 className="w-full flex items-center justify-between p-4 bg-violet-600/10 border border-violet-500/30 hover:bg-violet-600/20 text-white rounded-xl transition-all group">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-violet-600 flex items-center justify-center">
-                    <Plus size={18} />
+                    <FileText size={16} />
                   </div>
                   <div className="text-left">
                     <p className="font-medium text-sm">Create from scratch</p>
                     <p className="text-gray-400 text-xs">Full customisation</p>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-gray-500 group-hover:text-white transition-colors" />
+              </button>
+
+              {/* Create with AI */}
+              <button onClick={() => { navigate('/space-creation?mode=ai'); setShowPopup(false); }}
+                className="w-full flex items-center justify-between p-4 bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20 text-white rounded-xl transition-all group">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/80 flex items-center justify-center">
+                    <Sparkles size={16} />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-sm">Create with AI</p>
+                    <p className="text-gray-400 text-xs">AI generates your content</p>
                   </div>
                 </div>
                 <ChevronRight size={16} className="text-gray-500 group-hover:text-white transition-colors" />
@@ -174,7 +194,6 @@ function SpaceCard({ space, onClick, onEdit }) {
         </button>
       </div>
 
-      {/* Mini Stats */}
       <div className="grid grid-cols-3 gap-2">
         {[
           { icon: <MessageSquare size={13} />, label: 'Reviews', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
@@ -189,9 +208,7 @@ function SpaceCard({ space, onClick, onEdit }) {
       </div>
 
       <div className="mt-4 flex items-center justify-between">
-        <span className="text-gray-600 text-xs">
-          testimonial.to/{space.space_name}
-        </span>
+        <span className="text-gray-600 text-xs">testiqra.io/{space.space_name}</span>
         <ChevronRight size={14} className="text-gray-600 group-hover:text-gray-400 transition-colors" />
       </div>
     </div>
