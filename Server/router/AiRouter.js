@@ -16,32 +16,47 @@ AiRouter.post("/", async (req, res) => {
     }
 
     if (!process.env.GROQ_API_KEY) {
-      console.error("❌ GROQ_API_KEY is missing from .env");
+      console.error("GROQ_API_KEY is missing from .env");
       return res.status(500).json({ error: "GROQ_API_KEY not configured on server" });
     }
 
-    console.log("✅ Calling Groq...");
+    console.log("Calling Groq with prompt length:", prompt.length);
 
     const completion = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
-      messages: [{ role: "user", content: prompt }],
+      messages: [
+        {
+          role: "system",
+          content: "You are a JSON-only response bot. Always respond with valid JSON and nothing else. No markdown, no backticks, no explanation."
+        },
+        { role: "user", content: prompt }
+      ],
       max_tokens: 1024,
       temperature: 0.4,
+      response_format: { type: "json_object" }, // Force JSON mode
     });
 
     const result = completion.choices?.[0]?.message?.content;
 
     if (!result) {
-      console.error("❌ Groq returned empty response:", JSON.stringify(completion));
+      console.error("Groq returned empty response:", JSON.stringify(completion));
       return res.status(500).json({ error: "Groq returned no response" });
     }
 
-    console.log("✅ Groq responded successfully");
-    res.json({ result });
+    console.log("Groq raw result:", result);
+
+    // Clean any accidental markdown fences before sending
+    const cleaned = result.replace(/```json|```/g, "").trim();
+
+    res.json({ result: cleaned });
 
   } catch (error) {
-    console.error("❌ AiRouter crash:", error.message);
-    res.status(500).json({ error: "AI generation failed", details: error.message });
+    console.error("AiRouter crash:", error.message, error?.status, error?.error);
+    res.status(500).json({ 
+      error: "AI generation failed", 
+      details: error.message,
+      status: error?.status 
+    });
   }
 });
 

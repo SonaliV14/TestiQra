@@ -4,13 +4,13 @@ import axios from 'axios';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import toast, { Toaster } from 'react-hot-toast';
 import {
-  Sparkles, X, Search, Filter,
+  Sparkles, X, Search,
   ThumbsUp, ThumbsDown, Star,
-  Heart, Settings, BarChart2,
+  Heart, BarChart2,
   MessageSquare, Copy, Check,
   RefreshCw, GripVertical, Edit3,
-  ExternalLink, Video, FileText,
-  ChevronDown, Zap
+  ExternalLink,
+  ChevronDown, Zap, ArrowRight
 } from 'lucide-react';
 
 const BACKEND_URL = "http://localhost:3001";
@@ -38,32 +38,27 @@ const AISummaryModal = ({ testimonials, onClose }) => {
   const [copied, setCopied] = useState(false);
 
   const generateSummary = async () => {
-    if (!testimonials.length) {
-      toast.error('No testimonials to summarise');
-      return;
-    }
+    if (!testimonials.length) { toast.error('No testimonials to summarise'); return; }
     setLoading(true);
-    setSummary(null); // reset on regenerate
-
+    setSummary(null);
     try {
       const excerpts = testimonials.slice(0, 40).map((t, i) =>
         `[${i + 1}] Rating: ${t.Rating}/5 — "${t.Content}"`
       ).join('\n');
 
-      // ✅ FIX 1: Send just { prompt } — that's what AiRouter.js expects
-      const response = await fetch(`${BACKEND_URL}/api/v1/ai/generate`, {
+      const response = await fetch(`${BACKEND_URL}/api/v1/ai`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: "Bearer " + localStorage.getItem("token"),
         },
         body: JSON.stringify({
-          prompt: `You are a business analyst. Analyse these customer testimonials and return ONLY valid JSON (no markdown, no backticks, no explanation) with this exact structure:
+          prompt: `You are a business analyst. Analyse these customer testimonials and return ONLY valid JSON with this exact structure:
 {
   "overallSentiment": "Positive",
   "sentimentScore": 85,
   "keyPositives": ["point one", "point two", "point three"],
-  "keyComplaints": ["complaint one", "complaint two", "complaint three"],
+  "keyComplaints": ["complaint one", "complaint two"],
   "summary": "2-3 sentence executive summary here."
 }
 
@@ -73,28 +68,25 @@ ${excerpts}`
       });
 
       if (!response.ok) {
-        throw new Error(`Backend error: ${response.status}`);
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.details || `Backend error: ${response.status}`);
       }
 
       const data = await response.json();
-
-      // ✅ FIX 2: Read data.result — that's what AiRouter.js returns
       const raw = data.result || '{}';
       const cleaned = raw.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(cleaned);
 
-      // ✅ FIX 3: Guarantee every array field exists before .map() is called
       setSummary({
         overallSentiment: parsed.overallSentiment || 'Mixed',
-        sentimentScore:   parsed.sentimentScore   ?? 50,
-        summary:          parsed.summary          || 'No summary available.',
+        sentimentScore:   typeof parsed.sentimentScore === 'number' ? parsed.sentimentScore : 50,
+        summary:          parsed.summary || 'No summary available.',
         keyPositives:     Array.isArray(parsed.keyPositives)  ? parsed.keyPositives  : [],
         keyComplaints:    Array.isArray(parsed.keyComplaints) ? parsed.keyComplaints : [],
       });
-
     } catch (e) {
       console.error('AI Summary error:', e);
-      toast.error('Failed to generate summary');
+      toast.error(e.message || 'Failed to generate summary');
     } finally {
       setLoading(false);
     }
@@ -115,22 +107,12 @@ ${excerpts}`
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const sentimentColor = {
-    Positive: 'text-emerald-400',
-    Mixed:    'text-amber-400',
-    Negative: 'text-red-400',
-  };
-  const sentimentBg = {
-    Positive: 'bg-emerald-400/10 border-emerald-400/20',
-    Mixed:    'bg-amber-400/10  border-amber-400/20',
-    Negative: 'bg-red-400/10   border-red-400/20',
-  };
+  const sentimentColor = { Positive: 'text-emerald-400', Mixed: 'text-amber-400', Negative: 'text-red-400' };
+  const sentimentBg    = { Positive: 'bg-emerald-400/10 border-emerald-400/20', Mixed: 'bg-amber-400/10 border-amber-400/20', Negative: 'bg-red-400/10 border-red-400/20' };
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-[#0d1117] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/8">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-cyan-400/15 border border-cyan-400/25 flex items-center justify-center">
@@ -153,45 +135,32 @@ ${excerpts}`
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-6 space-y-4">
-
-          {/* Loading state */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <div className="w-10 h-10 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin" />
-              <p className="text-gray-500 text-sm">Analysing with Gemini AI…</p>
+              <p className="text-gray-500 text-sm">Analysing testimonials with AI…</p>
             </div>
           )}
 
-          {/* Result */}
           {!loading && summary && (
             <>
-              {/* Sentiment bar */}
               <div className={`flex items-center gap-4 p-4 rounded-xl border ${sentimentBg[summary.overallSentiment] || 'bg-white/4 border-white/8'}`}>
                 <div className="flex-1">
                   <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">Overall Sentiment</p>
-                  <p className={`text-2xl font-bold ${sentimentColor[summary.overallSentiment] || 'text-white'}`}>
-                    {summary.overallSentiment}
-                  </p>
+                  <p className={`text-2xl font-bold ${sentimentColor[summary.overallSentiment] || 'text-white'}`}>{summary.overallSentiment}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-1">Score</p>
-                  <p className="text-3xl font-bold text-white">
-                    {summary.sentimentScore}<span className="text-gray-600 text-lg">/100</span>
-                  </p>
+                  <p className="text-3xl font-bold text-white">{summary.sentimentScore}<span className="text-gray-600 text-lg">/100</span></p>
                 </div>
                 <div className="w-20 hidden sm:block">
                   <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-cyan-400 rounded-full transition-all duration-700"
-                      style={{ width: `${summary.sentimentScore}%` }}
-                    />
+                    <div className="h-full bg-cyan-400 rounded-full transition-all duration-700" style={{ width: `${summary.sentimentScore}%` }} />
                   </div>
                 </div>
               </div>
 
-              {/* Executive summary */}
               <div className="p-4 bg-white/3 border border-white/8 rounded-xl">
                 <p className="text-gray-500 text-[10px] uppercase tracking-widest mb-2 flex items-center gap-1.5">
                   <BarChart2 size={11} /> Executive Summary
@@ -199,7 +168,6 @@ ${excerpts}`
                 <p className="text-gray-200 text-sm leading-relaxed">{summary.summary}</p>
               </div>
 
-              {/* Positives + Complaints */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-4 bg-emerald-400/5 border border-emerald-400/15 rounded-xl">
                   <p className="text-emerald-400 text-[10px] uppercase tracking-widest mb-3 flex items-center gap-1.5">
@@ -207,15 +175,11 @@ ${excerpts}`
                   </p>
                   {summary.keyPositives.length === 0
                     ? <p className="text-gray-600 text-xs">None identified</p>
-                    : (
-                      <ul className="space-y-2">
-                        {summary.keyPositives.map((p, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                            <span className="text-emerald-400 mt-0.5 shrink-0">✓</span> {p}
-                          </li>
-                        ))}
-                      </ul>
-                    )
+                    : <ul className="space-y-2">{summary.keyPositives.map((p, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                          <span className="text-emerald-400 mt-0.5 shrink-0">✓</span> {p}
+                        </li>
+                      ))}</ul>
                   }
                 </div>
                 <div className="p-4 bg-red-400/5 border border-red-400/15 rounded-xl">
@@ -224,20 +188,15 @@ ${excerpts}`
                   </p>
                   {summary.keyComplaints.length === 0
                     ? <p className="text-gray-600 text-xs">None identified</p>
-                    : (
-                      <ul className="space-y-2">
-                        {summary.keyComplaints.map((c, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
-                            <span className="text-red-400 mt-0.5 shrink-0">✗</span> {c}
-                          </li>
-                        ))}
-                      </ul>
-                    )
+                    : <ul className="space-y-2">{summary.keyComplaints.map((c, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+                          <span className="text-red-400 mt-0.5 shrink-0">✗</span> {c}
+                        </li>
+                      ))}</ul>
                   }
                 </div>
               </div>
 
-              {/* Copy button */}
               <button onClick={handleCopy}
                 className="w-full flex items-center justify-center gap-2 py-3 bg-cyan-400 hover:bg-cyan-300 text-black rounded-xl transition-all font-semibold text-sm">
                 {copied ? <><Check size={15} /> Copied!</> : <><Copy size={15} /> Copy Summary</>}
@@ -245,7 +204,6 @@ ${excerpts}`
             </>
           )}
 
-          {/* No testimonials fallback */}
           {!loading && !summary && (
             <div className="text-center py-12">
               <p className="text-gray-500 text-sm">No summary generated yet.</p>
@@ -261,9 +219,354 @@ ${excerpts}`
   );
 };
 
+// ─── AI Highlight Reel Modal ──────────────────────────────────────────────────
+const AIHighlightModal = ({ testimonials, onClose }) => {
+  const [highlights, setHighlights] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const generate = async () => {
+    if (!testimonials.length) { toast.error('No testimonials yet'); return; }
+    setLoading(true); setHighlights(null);
+    try {
+      const excerpts = testimonials.map((t, i) =>
+        `[id:${t.id}] Rating:${t.Rating}/5 — "${t.Content?.slice(0, 200)}"`
+      ).join('\n');
+
+      const res = await fetch(`${BACKEND_URL}/api/v1/ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') },
+        body: JSON.stringify({
+          prompt: `You are a conversion copywriter. From these testimonials pick the 3-5 BEST ones to feature on a website homepage. Prioritise: specificity, emotional impact, mentions of concrete results, and high star ratings.
+
+Return ONLY valid JSON:
+{
+  "picks": [
+    { "id": <testimonial id as number>, "reason": "one sentence why this one stands out" }
+  ]
+}
+
+Testimonials:
+${excerpts}`
+        })
+      });
+      const data = await res.json();
+      const cleaned = (data.result || '{}').replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      setHighlights(Array.isArray(parsed.picks) ? parsed.picks : []);
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to pick highlights');
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { generate(); }, []);
+
+  const pickedTestimonials = highlights
+    ? highlights.map(h => ({
+        ...testimonials.find(t => t.id === h.id || t.id === String(h.id)),
+        reason: h.reason
+      })).filter(t => t.username)
+    : [];
+
+  const copyAll = () => {
+    const text = pickedTestimonials.map(t =>
+      `"${t.Content}"\n— ${t.username}\n(Why picked: ${t.reason})`
+    ).join('\n\n');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[#0d1117] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b border-white/8">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-teal-400/15 border border-teal-400/25 flex items-center justify-center">
+              <Star size={17} className="text-teal-400" fill="currentColor" />
+            </div>
+            <div>
+              <h2 className="text-white font-semibold text-base">AI Highlight Reel</h2>
+              <p className="text-gray-500 text-xs">Best testimonials to feature on your website</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={generate} disabled={loading}
+              className="p-2 rounded-xl bg-white/4 hover:bg-white/8 text-gray-500 hover:text-white transition-all disabled:opacity-40">
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button onClick={onClose}
+              className="p-2 rounded-xl bg-white/4 hover:bg-white/8 text-gray-500 hover:text-white transition-all">
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="w-10 h-10 rounded-full border-2 border-teal-400 border-t-transparent animate-spin" />
+              <p className="text-gray-500 text-sm">Picking your best testimonials…</p>
+            </div>
+          )}
+
+          {!loading && pickedTestimonials.length > 0 && (
+            <>
+              <p className="text-gray-500 text-xs">
+                AI selected <span className="text-white font-medium">{pickedTestimonials.length}</span> standout testimonials
+              </p>
+              <div className="space-y-3">
+                {pickedTestimonials.map((t, i) => (
+                  <div key={t.id} className="p-4 bg-white/3 border border-teal-400/15 rounded-xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="w-5 h-5 rounded-full bg-teal-400/20 flex items-center justify-center text-teal-400 text-xs font-bold shrink-0">
+                        {i + 1}
+                      </span>
+                      <img
+                        src={t.UserImageURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(t.username)}&backgroundColor=0d1117&textColor=2dd4bf`}
+                        alt="" className="w-6 h-6 rounded-lg object-cover border border-white/10"
+                      />
+                      <span className="text-white text-sm font-medium">{t.username}</span>
+                      <StarRating value={t.Rating} />
+                    </div>
+                    <p className="text-gray-300 text-sm leading-relaxed mb-2 line-clamp-3">"{t.Content}"</p>
+                    <div className="flex items-start gap-1.5 p-2 bg-teal-400/5 border border-teal-400/10 rounded-lg">
+                      <Sparkles size={11} className="text-teal-400 mt-0.5 shrink-0" />
+                      <p className="text-teal-300 text-xs">{t.reason}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={copyAll}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-teal-400 hover:bg-teal-300 text-black rounded-xl font-semibold text-sm transition-all">
+                {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy All Highlights</>}
+              </button>
+            </>
+          )}
+
+          {!loading && pickedTestimonials.length === 0 && highlights !== null && (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-sm">Couldn't pick highlights. Try regenerating.</p>
+              <button onClick={generate}
+                className="mt-3 px-4 py-2 bg-teal-400/10 border border-teal-400/20 text-teal-400 rounded-xl text-sm">
+                Try Again
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── AI Improvement Coach Modal ───────────────────────────────────────────────
+const AIImprovementModal = ({ testimonials, onClose }) => {
+  const [insights, setInsights] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const generate = async () => {
+    const lowRated = testimonials.filter(t => t.Rating <= 3 && t.Content);
+    if (!lowRated.length) {
+      setInsights({ issues: [], message: 'All your testimonials are 4★ or above. Keep it up!' });
+      return;
+    }
+    setLoading(true); setInsights(null);
+    try {
+      const excerpts = lowRated.map((t, i) =>
+        `[${i + 1}] Rating:${t.Rating}/5 — "${t.Content?.slice(0, 250)}"`
+      ).join('\n');
+
+      const res = await fetch(`${BACKEND_URL}/api/v1/ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') },
+        body: JSON.stringify({
+          prompt: `You are a product coach. Analyse these low-rated customer reviews and extract actionable improvement areas.
+
+Return ONLY valid JSON:
+{
+  "issues": [
+    {
+      "theme": "short theme name",
+      "priority": "High",
+      "description": "what customers are complaining about",
+      "action": "one concrete action the business can take"
+    }
+  ],
+  "topPriority": "the single most important thing to fix right now"
+}
+
+Reviews:
+${excerpts}`
+        })
+      });
+      const data = await res.json();
+      const cleaned = (data.result || '{}').replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      setInsights({
+        issues: Array.isArray(parsed.issues) ? parsed.issues : [],
+        topPriority: parsed.topPriority || '',
+        message: null
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to generate insights');
+    } finally { setLoading(false); }
+  };
+
+  useEffect(() => { generate(); }, []);
+
+  const priorityColor = {
+    High:   { bg: 'bg-red-400/10 border-red-400/20',    text: 'text-red-400',   badge: 'bg-red-400/15 text-red-400' },
+    Medium: { bg: 'bg-amber-400/10 border-amber-400/20', text: 'text-amber-400', badge: 'bg-amber-400/15 text-amber-400' },
+    Low:    { bg: 'bg-gray-400/10 border-gray-400/20',   text: 'text-gray-400',  badge: 'bg-gray-400/15 text-gray-400' },
+  };
+
+  const copyInsights = () => {
+    if (!insights?.issues) return;
+    const text = [
+      insights.topPriority ? `Top Priority: ${insights.topPriority}\n` : '',
+      ...insights.issues.map(iss =>
+        `[${iss.priority}] ${iss.theme}\nIssue: ${iss.description}\nAction: ${iss.action}`
+      )
+    ].join('\n\n');
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[#0d1117] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="flex items-center justify-between p-6 border-b border-white/8">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-400/15 border border-amber-400/25 flex items-center justify-center">
+              <Zap size={17} className="text-amber-400" />
+            </div>
+            <div>
+              <h2 className="text-white font-semibold text-base">AI Improvement Coach</h2>
+              <p className="text-gray-500 text-xs">
+                Analysing {testimonials.filter(t => t.Rating <= 3).length} low-rated reviews
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={generate} disabled={loading}
+              className="p-2 rounded-xl bg-white/4 hover:bg-white/8 text-gray-500 hover:text-white transition-all disabled:opacity-40">
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button onClick={onClose}
+              className="p-2 rounded-xl bg-white/4 hover:bg-white/8 text-gray-500 hover:text-white transition-all">
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="w-10 h-10 rounded-full border-2 border-amber-400 border-t-transparent animate-spin" />
+              <p className="text-gray-500 text-sm">Analysing low-rated feedback…</p>
+            </div>
+          )}
+
+          {!loading && insights && (
+            <>
+              {insights.message && (
+                <div className="flex items-center gap-3 p-4 bg-emerald-400/8 border border-emerald-400/20 rounded-xl">
+                  <Check size={18} className="text-emerald-400 shrink-0" />
+                  <p className="text-emerald-300 text-sm">{insights.message}</p>
+                </div>
+              )}
+              {insights.topPriority && (
+                <div className="p-4 bg-amber-400/8 border border-amber-400/20 rounded-xl">
+                  <p className="text-amber-400 text-[10px] uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                    <Zap size={11} /> Top priority right now
+                  </p>
+                  <p className="text-white text-sm font-medium">{insights.topPriority}</p>
+                </div>
+              )}
+              {insights.issues.length > 0 && (
+                <div className="space-y-3">
+                  {insights.issues.map((iss, i) => {
+                    const colors = priorityColor[iss.priority] || priorityColor.Low;
+                    return (
+                      <div key={i} className={`p-4 border rounded-xl ${colors.bg}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className={`text-sm font-medium ${colors.text}`}>{iss.theme}</p>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colors.badge}`}>
+                            {iss.priority}
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-xs leading-relaxed mb-2">{iss.description}</p>
+                        <div className="flex items-start gap-1.5 p-2 bg-white/4 border border-white/6 rounded-lg">
+                          <ArrowRight size={11} className="text-gray-500 mt-0.5 shrink-0" />
+                          <p className="text-gray-300 text-xs">{iss.action}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {insights.issues.length > 0 && (
+                <button onClick={copyInsights}
+                  className="w-full flex items-center justify-center gap-2 py-3 bg-amber-400 hover:bg-amber-300 text-black rounded-xl font-semibold text-sm transition-all">
+                  {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy Action Plan</>}
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Testimonial Card ─────────────────────────────────────────────────────────
 const TestimonialCard = ({ testimonial, onLike, isReordering }) => {
   const isVideo = !testimonial.isTextContent;
+  const [reply, setReply] = useState(null);
+  const [replyLoading, setReplyLoading] = useState(false);
+  const [replyCopied, setReplyCopied] = useState(false);
+  const [showReply, setShowReply] = useState(false);
+
+  const generateReply = async () => {
+    if (reply) { setShowReply(r => !r); return; }
+    setReplyLoading(true);
+    setShowReply(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/v1/ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') },
+        body: JSON.stringify({
+          prompt: `You are a friendly business owner. Write a SHORT, warm, genuine reply to this customer testimonial. 2-3 sentences max. No hashtags. No emojis. Do not mention the rating number.
+
+Customer: ${testimonial.username}
+Rating: ${testimonial.Rating}/5
+Testimonial: "${testimonial.Content}"
+
+Return ONLY valid JSON:
+{ "reply": "your reply text here" }`
+        })
+      });
+      const data = await res.json();
+      const cleaned = (data.result || '{}').replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      setReply(parsed.reply || 'Thank you so much for sharing your experience!');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to generate reply');
+      setShowReply(false);
+    } finally { setReplyLoading(false); }
+  };
+
+  const copyReply = () => {
+    if (!reply) return;
+    navigator.clipboard.writeText(reply);
+    setReplyCopied(true);
+    setTimeout(() => setReplyCopied(false), 2000);
+  };
 
   return (
     <div className={`group bg-[#0d1117] border rounded-2xl p-5 transition-all duration-200 hover:bg-[#111318]
@@ -315,6 +618,39 @@ const TestimonialCard = ({ testimonial, onLike, isReordering }) => {
         <img src={testimonial.imageURL} alt="" className="w-full rounded-xl mt-3 max-h-48 object-cover border border-white/8" />
       )}
 
+      {/* ── AI Reply Section ── */}
+      {testimonial.isTextContent && (
+        <div className="mt-3">
+          <button
+            onClick={generateReply}
+            disabled={replyLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-medium transition-all disabled:opacity-50">
+            {replyLoading
+              ? <><RefreshCw size={11} className="animate-spin" /> Drafting reply…</>
+              : showReply && reply
+                ? <><ChevronDown size={11} /> Hide reply</>
+                : <><MessageSquare size={11} /> AI draft reply</>}
+          </button>
+
+          {showReply && (
+            <div className="mt-2 p-3 bg-purple-500/5 border border-purple-500/15 rounded-xl">
+              {replyLoading
+                ? <div className="h-4 bg-white/5 rounded animate-pulse" />
+                : (
+                  <>
+                    <p className="text-gray-300 text-xs leading-relaxed mb-2">{reply}</p>
+                    <button onClick={copyReply}
+                      className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                      {replyCopied ? <><Check size={11} /> Copied!</> : <><Copy size={11} /> Copy reply</>}
+                    </button>
+                  </>
+                )
+              }
+            </div>
+          )}
+        </div>
+      )}
+
       <p className="text-gray-700 text-xs mt-3">
         {new Date(testimonial.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
       </p>
@@ -334,6 +670,9 @@ export default function Space() {
   const [search, setSearch] = useState('');
   const [isReordering, setIsReordering] = useState(false);
   const [showAISummary, setShowAISummary] = useState(false);
+  // ✅ FIX: All three modal states declared here
+  const [showHighlights, setShowHighlights] = useState(false);
+  const [showImprovement, setShowImprovement] = useState(false);
   const [stats, setStats] = useState({ total: 0, liked: 0, avgRating: 0, video: 0 });
   const [copied, setCopied] = useState(false);
 
@@ -346,7 +685,6 @@ export default function Space() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Fetch space info
   useEffect(() => {
     axios.get(`${BACKEND_URL}/api/v1/spaceinfo`, {
       params: { spacename },
@@ -354,7 +692,6 @@ export default function Space() {
     }).then(r => setSpaceinfo(r.data)).catch(console.error);
   }, [spacename]);
 
-  // Fetch testimonials
   const fetchTestimonials = useCallback(async () => {
     try {
       const r = await axios.get(`${BACKEND_URL}/api/v1/fetchtestimonials`, {
@@ -378,7 +715,6 @@ export default function Space() {
 
   useEffect(() => { fetchTestimonials(); }, [fetchTestimonials]);
 
-  // Filter & search
   useEffect(() => {
     let list = [...testimonials];
     if (filter === 'liked') list = list.filter(t => t.liked);
@@ -411,10 +747,10 @@ export default function Space() {
   };
 
   const filterTabs = [
-    { id: 'all',   label: 'All',       count: stats.total },
-    { id: 'liked', label: '❤️ Loved',  count: stats.liked },
-    { id: 'text',  label: '📝 Text',   count: stats.total - stats.video },
-    { id: 'video', label: '📹 Video',  count: stats.video },
+    { id: 'all',   label: 'All',      count: stats.total },
+    { id: 'liked', label: '❤️ Loved', count: stats.liked },
+    { id: 'text',  label: '📝 Text',  count: stats.total - stats.video },
+    { id: 'video', label: '📹 Video', count: stats.video },
   ];
 
   return (
@@ -425,9 +761,10 @@ export default function Space() {
         style: { background: '#111318', color: '#fff', border: '1px solid rgba(255,255,255,.1)', borderRadius: '14px' }
       }} />
 
-      {showAISummary && (
-        <AISummaryModal testimonials={testimonials} onClose={() => setShowAISummary(false)} />
-      )}
+      {/* ✅ FIX: All three modals rendered separately with correct state */}
+      {showAISummary   && <AISummaryModal     testimonials={testimonials} onClose={() => setShowAISummary(false)} />}
+      {showHighlights  && <AIHighlightModal   testimonials={testimonials} onClose={() => setShowHighlights(false)} />}
+      {showImprovement && <AIImprovementModal testimonials={testimonials} onClose={() => setShowImprovement(false)} />}
 
       {/* ── Top Bar ── */}
       <div className="border-b border-white/6 bg-[#080a0f]/90 backdrop-blur sticky top-0 z-30">
@@ -439,40 +776,30 @@ export default function Space() {
               </div>
               <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800 }} className="text-white text-base">TestiQra</span>
             </div>
-
             <div className="w-px h-5 bg-white/10" />
-
             <div className="flex items-center gap-3">
               <img
                 src={spaceinfo.spaceinfo?.logo || 'https://testimonial.to/static/media/just-logo.040f4fd2.svg'}
                 alt="" className="w-8 h-8 rounded-lg object-cover border border-white/10 bg-[#111318]"
               />
-              <div>
-                <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
-                  className="text-white text-base leading-tight">{spaceinfo.spaceinfo?.space_name || spacename}</h1>
-              </div>
+              <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
+                className="text-white text-base leading-tight">{spaceinfo.spaceinfo?.space_name || spacename}</h1>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={copyShareUrl}
-              className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white/4 border border-white/8 hover:bg-white/8 text-gray-400 hover:text-white rounded-xl transition-all text-xs font-medium max-w-xs truncate"
-              title={shareableUrl}
-            >
+            <button onClick={copyShareUrl}
+              className="hidden sm:flex items-center gap-2 px-3 py-2 bg-white/4 border border-white/8 hover:bg-white/8 text-gray-400 hover:text-white rounded-xl transition-all text-xs font-medium"
+              title={shareableUrl}>
               <ExternalLink size={13} className="shrink-0" />
               <span className="truncate max-w-[180px]">{shareableUrl.replace('http://', '')}</span>
               {copied ? <Check size={12} className="text-cyan-400 shrink-0" /> : <Copy size={12} className="shrink-0" />}
             </button>
-
-            <button
-              onClick={() => setShowAISummary(true)}
+            <button onClick={() => setShowAISummary(true)}
               className="flex items-center gap-2 px-3 py-2 bg-cyan-400/10 border border-cyan-400/20 hover:bg-cyan-400/20 text-cyan-400 rounded-xl transition-all text-sm font-medium">
               <Sparkles size={14} /> AI Summary
             </button>
-
-            <button
-              onClick={() => navigate(`/edit/${spacename}`)}
+            <button onClick={() => navigate(`/edit/${spacename}`)}
               className="flex items-center gap-2 px-3 py-2 bg-white/4 border border-white/8 hover:bg-white/8 text-gray-400 hover:text-white rounded-xl transition-all text-sm">
               <Edit3 size={14} /> Edit
             </button>
@@ -488,10 +815,10 @@ export default function Space() {
             <div className="bg-[#0d1117] border border-white/7 rounded-2xl p-4 space-y-3">
               <p className="text-gray-600 text-[10px] uppercase tracking-widest font-semibold">At a Glance</p>
               {[
-                { label: 'Total',      value: stats.total,               color: 'text-white' },
-                { label: 'Liked',      value: stats.liked,               color: 'text-rose-400' },
-                { label: 'Avg Rating', value: `${stats.avgRating}★`,     color: 'text-amber-400' },
-                { label: 'Videos',     value: stats.video,               color: 'text-red-400' },
+                { label: 'Total',      value: stats.total,           color: 'text-white' },
+                { label: 'Liked',      value: stats.liked,           color: 'text-rose-400' },
+                { label: 'Avg Rating', value: `${stats.avgRating}★`, color: 'text-amber-400' },
+                { label: 'Videos',     value: stats.video,           color: 'text-red-400' },
               ].map(s => (
                 <div key={s.label} className="flex justify-between items-center">
                   <span className="text-gray-500 text-sm">{s.label}</span>
@@ -503,14 +830,24 @@ export default function Space() {
             <div className="bg-[#0d1117] border border-white/7 rounded-2xl p-4 space-y-2">
               <p className="text-gray-600 text-[10px] uppercase tracking-widest font-semibold mb-3">Actions</p>
 
-              <button
-                onClick={() => setShowAISummary(true)}
+              <button onClick={() => setShowAISummary(true)}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 hover:bg-cyan-400/20 transition-all text-sm font-medium">
                 <Sparkles size={14} /> AI Summary
               </button>
 
-              <button
-                onClick={() => setIsReordering(r => !r)}
+              {/* ✅ FIX: Correct handler setShowHighlights */}
+              <button onClick={() => setShowHighlights(true)}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-teal-400/10 border border-teal-400/20 text-teal-400 hover:bg-teal-400/20 transition-all text-sm font-medium">
+                <Star size={14} fill="currentColor" /> Highlight Reel
+              </button>
+
+              {/* ✅ NEW: Improvement Coach button */}
+              <button onClick={() => setShowImprovement(true)}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-400 hover:bg-amber-400/20 transition-all text-sm font-medium">
+                <Zap size={14} /> Improvement Coach
+              </button>
+
+              <button onClick={() => setIsReordering(r => !r)}
                 className={`w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all
                   ${isReordering
                     ? 'bg-emerald-400/15 border-emerald-400/25 text-emerald-400'
@@ -518,14 +855,12 @@ export default function Space() {
                 <GripVertical size={14} /> {isReordering ? 'Done Reordering' : 'Reorder'}
               </button>
 
-              <button
-                onClick={() => navigate(`/testimonialwall/${spacename}`)}
+              <button onClick={() => navigate(`/testimonialwall/${spacename}`)}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/4 border border-white/8 text-gray-400 hover:bg-white/8 hover:text-white transition-all text-sm">
                 <ExternalLink size={14} /> Wall of Love
               </button>
 
-              <button
-                onClick={() => navigate(`/edit/${spacename}`)}
+              <button onClick={() => navigate(`/edit/${spacename}`)}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white/4 border border-white/8 text-gray-400 hover:bg-white/8 hover:text-white transition-all text-sm">
                 <Edit3 size={14} /> Edit Space
               </button>
@@ -534,8 +869,7 @@ export default function Space() {
             <div className="bg-[#0d1117] border border-white/7 rounded-2xl p-4 space-y-2">
               <p className="text-gray-600 text-[10px] uppercase tracking-widest font-semibold">Share with Customers</p>
               <p className="text-gray-500 text-xs leading-relaxed break-all">{shareableUrl.replace('http://', '')}</p>
-              <button
-                onClick={copyShareUrl}
+              <button onClick={copyShareUrl}
                 className="w-full flex items-center justify-center gap-1.5 py-2 bg-white/4 border border-white/8 hover:bg-white/8 text-gray-400 hover:text-white rounded-xl text-xs transition-all">
                 {copied ? <><Check size={12} className="text-cyan-400" /> Copied!</> : <><Copy size={12} /> Copy Link</>}
               </button>
@@ -545,8 +879,6 @@ export default function Space() {
 
         {/* ── Main content ── */}
         <main className="flex-1 min-w-0 space-y-6">
-
-          {/* Filter Tabs + Search */}
           <div className="flex items-center gap-3 flex-wrap">
             <div className="flex items-center gap-1.5 flex-wrap">
               {filterTabs.map(tab => (
@@ -556,21 +888,16 @@ export default function Space() {
                       ? 'bg-cyan-400/15 border-cyan-400/30 text-cyan-400'
                       : 'bg-[#0d1117] border-white/7 text-gray-500 hover:bg-white/4 hover:text-white'}`}>
                   {tab.label}
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full
-                    ${filter === tab.id ? 'bg-cyan-400/20' : 'bg-white/6'}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${filter === tab.id ? 'bg-cyan-400/20' : 'bg-white/6'}`}>
                     {tab.count}
                   </span>
                 </button>
               ))}
             </div>
-
             <div className="ml-auto flex items-center gap-2 bg-[#0d1117] border border-white/8 rounded-xl px-3 py-2">
               <Search size={14} className="text-gray-600" />
-              <input
-                value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="Search…"
-                className="bg-transparent text-white text-sm placeholder-gray-700 focus:outline-none w-36"
-              />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…"
+                className="bg-transparent text-white text-sm placeholder-gray-700 focus:outline-none w-36" />
               {search && (
                 <button onClick={() => setSearch('')}>
                   <X size={13} className="text-gray-600 hover:text-white" />
@@ -579,7 +906,6 @@ export default function Space() {
             </div>
           </div>
 
-          {/* Empty state */}
           {display.length === 0 && (
             <div className="text-center py-20">
               <div className="w-16 h-16 rounded-2xl bg-[#0d1117] border border-white/7 flex items-center justify-center mx-auto mb-4">
@@ -594,35 +920,18 @@ export default function Space() {
             </div>
           )}
 
-          {/* Testimonials Grid with DnD */}
           {display.length > 0 && (
             <DragDropContext onDragEnd={onDragEnd}>
               <Droppable droppableId="testimonials">
                 {(provided) => (
-                  <div
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                    className="grid grid-cols-1 xl:grid-cols-2 gap-4"
-                  >
+                  <div {...provided.droppableProps} ref={provided.innerRef}
+                    className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     {display.map((t, i) => (
-                      <Draggable
-                        key={t.id}
-                        draggableId={String(t.id)}
-                        index={i}
-                        isDragDisabled={!isReordering}
-                      >
+                      <Draggable key={t.id} draggableId={String(t.id)} index={i} isDragDisabled={!isReordering}>
                         {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            {...provided.dragHandleProps}
-                            className={snapshot.isDragging ? 'opacity-80 rotate-1' : ''}
-                          >
-                            <TestimonialCard
-                              testimonial={t}
-                              onLike={handleLike}
-                              isReordering={isReordering}
-                            />
+                          <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
+                            className={snapshot.isDragging ? 'opacity-80 rotate-1' : ''}>
+                            <TestimonialCard testimonial={t} onLike={handleLike} isReordering={isReordering} />
                           </div>
                         )}
                       </Draggable>

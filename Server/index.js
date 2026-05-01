@@ -21,9 +21,9 @@ app.use("/api/v1/sendtestimonials", SendtestimonialsRouter);
 app.use("/api/v1/fetchtestimonials", FetchTestimonials);
 app.use("/api/v1", LikedTestimonialsRouter);
 app.use("/api/v1/edit", editRouter);
-app.use("/api/v1/ai/generate", AiRouter);  
+app.use("/api/v1/ai", AiRouter);  
 
-// req and res (request and response)
+// req and res (request and response) 
 app.get("/", (req, res) => {
   res.send("Hello World");
 });
