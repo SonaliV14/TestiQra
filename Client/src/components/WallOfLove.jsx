@@ -1,76 +1,74 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import {
+  Star, Heart, Copy, Check, X, Search,
+  Grid3X3, List, LayoutGrid, Rows3, Sparkles,
+  ChevronLeft, ChevronRight, Zap, ExternalLink,
+  Play, Pause, Quote, TrendingUp, Film
+} from 'lucide-react';
 
-/* ─── Star Rating ─────────────────────────────────────────── */
-const Stars = ({ rating = 5, size = 14 }) => (
-  <span style={{ display: 'inline-flex', gap: 2 }}>
+const BACKEND_URL = 'http://localhost:3001';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const Stars = ({ rating = 5 }) => (
+  <div className="flex gap-0.5">
     {[1,2,3,4,5].map(i => (
-      <svg key={i} width={size} height={size} viewBox="0 0 14 14" fill={i <= rating ? '#fbbf24' : '#334155'}>
-        <path d="M7 1l1.8 3.6L13 5.3l-3 2.9.7 4.1L7 10.3l-3.7 2L4 8.2 1 5.3l4.2-.7z"/>
-      </svg>
+      <Star key={i} size={12}
+        className={i <= rating ? 'text-amber-400' : 'text-gray-700'}
+        fill={i <= rating ? 'currentColor' : 'none'} />
     ))}
-  </span>
+  </div>
 );
 
-/* ─── Avatar ──────────────────────────────────────────────── */
-const Avatar = ({ name = '', photo, size = 44 }) => {
-  const initials = name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-  const colors = ['#7c3aed','#db2777','#0891b2','#059669','#d97706','#dc2626'];
-  const color = colors[name.charCodeAt(0) % colors.length];
+const Avatar = ({ name = '', photo, size = 36 }) => {
+  const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const palette = ['#7c3aed','#0891b2','#059669','#d97706','#db2777','#dc2626'];
+  const bg = palette[(name.charCodeAt(0) || 0) % palette.length];
   if (photo) return (
     <img src={photo} alt={name} width={size} height={size}
-      style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(139,92,246,0.3)' }} />
+      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.08)', flexShrink: 0 }} />
   );
   return (
     <div style={{
-      width: size, height: size, borderRadius: '50%', background: color,
+      width: size, height: size, borderRadius: '50%', background: bg, flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.35, fontWeight: 600, color: '#fff', flexShrink: 0,
-      border: '2px solid rgba(139,92,246,0.3)',
+      fontSize: size * 0.36, fontWeight: 700, color: '#fff',
+      border: '2px solid rgba(255,255,255,0.08)',
     }}>{initials || '?'}</div>
   );
 };
 
-/* ─── Video Player Card ────────────────────────────────────── */
-const VideoCard = ({ t, layout }) => {
+// ─── Video Card ───────────────────────────────────────────────────────────────
+const VideoCard = ({ t, variant = 'default' }) => {
   const [playing, setPlaying] = useState(false);
-  const videoRef = useRef(null);
-
+  const ref = useRef(null);
   const toggle = () => {
-    if (!videoRef.current) return;
-    if (playing) { videoRef.current.pause(); setPlaying(false); }
-    else         { videoRef.current.play();  setPlaying(true);  }
+    if (!ref.current) return;
+    if (playing) { ref.current.pause(); setPlaying(false); }
+    else { ref.current.play(); setPlaying(true); }
   };
-
   return (
-    <div className={`testimonial-card video-card layout-${layout}`}>
-      <div className="video-wrapper" onClick={toggle}>
-        <video ref={videoRef} src={t.videoUrl} style={{ width:'100%', borderRadius: 10, display:'block' }}
+    <div className={`wol-card ${variant}`}>
+      <div className="wol-video-wrap" onClick={toggle}>
+        <video ref={ref} src={t.videoUrl || t.VideoURL}
+          style={{ width: '100%', display: 'block', borderRadius: '10px 10px 0 0', maxHeight: 200, objectFit: 'cover' }}
           onEnded={() => setPlaying(false)} />
         {!playing && (
-          <div className="play-overlay">
-            <div className="play-btn">
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M6 4l11 6-11 6V4z"/>
-              </svg>
-            </div>
+          <div className="wol-play-overlay">
+            <div className="wol-play-btn"><Play size={18} fill="currentColor" /></div>
           </div>
         )}
-        <span className="video-badge">
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
-            <path d="M1 2l6 3-6 3V2z"/>
-          </svg>
-          Video
-        </span>
+        <span className="wol-video-badge"><Film size={10} /> Video</span>
       </div>
-      <div className="card-body">
-        {t.rating && <Stars rating={t.rating} />}
-        {t.text && <p className="testimonial-text">{t.text}</p>}
-        <div className="author-row">
-          <Avatar name={t.name} photo={t.photo} size={36} />
+      <div className="wol-card-body">
+        <Stars rating={t.Rating || t.rating} />
+        {(t.Content || t.text) && <p className="wol-text">"{t.Content || t.text}"</p>}
+        <div className="wol-author">
+          <Avatar name={t.username || t.name} photo={t.UserImageURL || t.photo} size={32} />
           <div>
-            <p className="author-name">{t.name}</p>
-            {t.role && <p className="author-meta">{t.role}{t.company ? ` · ${t.company}` : ''}</p>}
+            <p className="wol-author-name">{t.username || t.name}</p>
+            {t.role && <p className="wol-author-meta">{t.role}{t.company ? ` · ${t.company}` : ''}</p>}
           </div>
         </div>
       </div>
@@ -78,113 +76,292 @@ const VideoCard = ({ t, layout }) => {
   );
 };
 
-/* ─── Text Card ───────────────────────────────────────────── */
-const TextCard = ({ t, layout, featured }) => (
-  <div className={`testimonial-card layout-${layout} ${featured ? 'featured' : ''}`}>
-    <div className="card-body">
-      <div className="card-top">
-        {t.rating && <Stars rating={t.rating} />}
-        {featured && <span className="featured-badge">✦ Featured</span>}
+// ─── Text Card ────────────────────────────────────────────────────────────────
+const TextCard = ({ t, variant = 'default', featured = false }) => (
+  <div className={`wol-card ${variant} ${featured ? 'featured' : ''}`}>
+    <div className="wol-card-body">
+      <div className="wol-card-top">
+        <Stars rating={t.Rating || t.rating} />
+        {featured && <span className="wol-featured-badge">✦ Featured</span>}
       </div>
-      <blockquote className="testimonial-text">"{t.text}"</blockquote>
-      <div className="author-row">
-        <Avatar name={t.name} photo={t.photo} size={36} />
+      <p className="wol-text">"{t.Content || t.text}"</p>
+      {(t.imageURL || t.image) && (
+        <img src={t.imageURL || t.image} alt="" className="wol-inline-img" />
+      )}
+      <div className="wol-author">
+        <Avatar name={t.username || t.name} photo={t.UserImageURL || t.photo} size={32} />
         <div>
-          <p className="author-name">{t.name}</p>
-          {t.role && <p className="author-meta">{t.role}{t.company ? ` · ${t.company}` : ''}</p>}
+          <p className="wol-author-name">{t.username || t.name}</p>
+          {t.email && <p className="wol-author-meta">{t.email}</p>}
+          <p className="wol-date">
+            {new Date(t.submittedAt || t.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
         </div>
       </div>
     </div>
   </div>
 );
 
-/* ─── Testimonial Card Router ─────────────────────────────── */
-const TestimonialCard = ({ t, layout, index }) => {
-  if (t.videoUrl) return <VideoCard t={t} layout={layout} />;
-  return <TextCard t={t} layout={layout} featured={index === 0} />;
+// ─── Card Router ──────────────────────────────────────────────────────────────
+const Card = ({ t, variant, index }) => {
+  if (t.videoUrl || t.VideoURL) return <VideoCard t={t} variant={variant} />;
+  return <TextCard t={t} variant={variant} featured={index === 0} />;
 };
 
-/* ─── Layout Components ───────────────────────────────────── */
-const MasonryLayout = ({ testimonials }) => {
+// ════════════════════════════════════════════════════════════════════
+// LAYOUT 1 — Masonry (3-col Pinterest style)
+// ════════════════════════════════════════════════════════════════════
+const MasonryLayout = ({ items }) => {
   const cols = [[], [], []];
-  testimonials.forEach((t, i) => cols[i % 3].push({ t, i }));
+  items.forEach((t, i) => cols[i % 3].push({ t, i }));
   return (
-    <div className="masonry-grid">
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
       {cols.map((col, ci) => (
-        <div key={ci} className="masonry-col">
-          {col.map(({ t, i }) => <TestimonialCard key={t.id || i} t={t} layout="masonry" index={i} />)}
+        <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {col.map(({ t, i }) => <Card key={t.id || i} t={t} variant="masonry" index={i} />)}
         </div>
       ))}
     </div>
   );
 };
 
-const GridLayout = ({ testimonials }) => (
-  <div className="grid-layout">
-    {testimonials.map((t, i) => <TestimonialCard key={t.id || i} t={t} layout="grid" index={i} />)}
+// ════════════════════════════════════════════════════════════════════
+// LAYOUT 2 — Grid (uniform 2-col)
+// ════════════════════════════════════════════════════════════════════
+const GridLayout = ({ items }) => (
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px,1fr))', gap: 16 }}>
+    {items.map((t, i) => <Card key={t.id || i} t={t} variant="grid" index={i} />)}
   </div>
 );
 
-const ListLayout = ({ testimonials }) => (
-  <div className="list-layout">
-    {testimonials.map((t, i) => <TestimonialCard key={t.id || i} t={t} layout="list" index={i} />)}
+// ════════════════════════════════════════════════════════════════════
+// LAYOUT 3 — List (single column, wide)
+// ════════════════════════════════════════════════════════════════════
+const ListLayout = ({ items }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 760, margin: '0 auto' }}>
+    {items.map((t, i) => (
+      <div key={t.id || i} className="wol-card list"
+        style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+        <Avatar name={t.username || t.name} photo={t.UserImageURL || t.photo} size={44} />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div>
+              <p className="wol-author-name">{t.username || t.name}</p>
+              {t.email && <p className="wol-author-meta">{t.email}</p>}
+            </div>
+            <Stars rating={t.Rating || t.rating} />
+          </div>
+          <p className="wol-text" style={{ margin: 0 }}>"{t.Content || t.text}"</p>
+          {(t.imageURL) && <img src={t.imageURL} alt="" className="wol-inline-img" style={{ marginTop: 10 }} />}
+          <p className="wol-date" style={{ marginTop: 8 }}>
+            {new Date(t.submittedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+        </div>
+      </div>
+    ))}
   </div>
 );
 
-const CarouselLayout = ({ testimonials }) => {
+// ════════════════════════════════════════════════════════════════════
+// LAYOUT 4 — Carousel (sliding cards)
+// ════════════════════════════════════════════════════════════════════
+const CarouselLayout = ({ items }) => {
   const [idx, setIdx] = useState(0);
   const visible = 3;
-  const max = Math.max(0, testimonials.length - visible);
-  const prev = () => setIdx(i => Math.max(0, i - 1));
-  const next = () => setIdx(i => Math.min(max, i + 1));
+  const max = Math.max(0, items.length - visible);
+
+  // auto-advance
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i >= max ? 0 : i + 1)), 4000);
+    return () => clearInterval(t);
+  }, [max]);
 
   return (
-    <div className="carousel-wrapper">
-      <button className="carousel-arrow left" onClick={prev} disabled={idx === 0}>
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4L6 9l5 5"/></svg>
+    <div style={{ position: 'relative', padding: '0 48px' }}>
+      <button className="wol-arrow left" onClick={() => setIdx(i => Math.max(0, i-1))} disabled={idx === 0}>
+        <ChevronLeft size={18} />
       </button>
-      <div className="carousel-track-outer">
-        <div className="carousel-track" style={{ transform: `translateX(calc(-${idx} * (340px + 16px)))` }}>
-          {testimonials.map((t, i) => (
-            <div key={t.id || i} className="carousel-item">
-              <TestimonialCard t={t} layout="carousel" index={i} />
+      <div style={{ overflow: 'hidden' }}>
+        <div style={{ display: 'flex', gap: 16, transition: 'transform 400ms cubic-bezier(0.4,0,0.2,1)', transform: `translateX(calc(-${idx} * (340px + 16px)))` }}>
+          {items.map((t, i) => (
+            <div key={t.id || i} style={{ minWidth: 320, flexShrink: 0 }}>
+              <Card t={t} variant="carousel" index={i} />
             </div>
           ))}
         </div>
       </div>
-      <button className="carousel-arrow right" onClick={next} disabled={idx >= max}>
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M7 4l5 5-5 5"/></svg>
+      <button className="wol-arrow right" onClick={() => setIdx(i => Math.min(max, i+1))} disabled={idx >= max}>
+        <ChevronRight size={18} />
       </button>
-      <div className="carousel-dots">
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 20 }}>
         {Array.from({ length: max + 1 }).map((_, i) => (
-          <button key={i} className={`dot ${i === idx ? 'active' : ''}`} onClick={() => setIdx(i)} />
+          <button key={i} onClick={() => setIdx(i)}
+            style={{ width: i === idx ? 20 : 6, height: 6, borderRadius: 3, border: 'none', cursor: 'pointer', transition: 'all 200ms', background: i === idx ? '#06b6d4' : '#334155' }} />
         ))}
       </div>
     </div>
   );
 };
 
-const FeaturedLayout = ({ testimonials }) => {
-  const [hero, ...rest] = testimonials;
+// ════════════════════════════════════════════════════════════════════
+// LAYOUT 5 — Featured (1 hero + grid below)
+// ════════════════════════════════════════════════════════════════════
+const FeaturedLayout = ({ items }) => {
+  const [hero, ...rest] = items;
   return (
-    <div className="featured-layout">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {hero && (
-        <div className="hero-testimonial">
-          <TestimonialCard t={hero} layout="hero" index={0} />
+        <div className="wol-card featured hero" style={{ padding: '2rem' }}>
+          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
+            <Quote size={48} style={{ color: 'rgba(6,182,212,0.2)', flexShrink: 0, marginTop: 4 }} />
+            <div style={{ flex: 1 }}>
+              <Stars rating={hero.Rating || hero.rating} />
+              <p className="wol-text" style={{ fontSize: '1.15rem', margin: '12px 0' }}>"{hero.Content || hero.text}"</p>
+              <div className="wol-author" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 16, marginTop: 16 }}>
+                <Avatar name={hero.username || hero.name} photo={hero.UserImageURL || hero.photo} size={44} />
+                <div>
+                  <p className="wol-author-name" style={{ fontSize: '0.95rem' }}>{hero.username || hero.name}</p>
+                  {hero.email && <p className="wol-author-meta">{hero.email}</p>}
+                </div>
+                <span className="wol-featured-badge" style={{ marginLeft: 'auto' }}>✦ Top Pick</span>
+              </div>
+            </div>
+          </div>
         </div>
       )}
-      <div className="featured-grid">
-        {rest.map((t, i) => <TestimonialCard key={t.id || i} t={t} layout="grid" index={i+1} />)}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px,1fr))', gap: 16 }}>
+        {rest.map((t, i) => <Card key={t.id || i} t={t} variant="grid" index={i+1} />)}
       </div>
     </div>
   );
 };
 
-/* ─── Embed Panel ─────────────────────────────────────────── */
+// ════════════════════════════════════════════════════════════════════
+// LAYOUT 6 — Marquee (two auto-scrolling rows) — NEW
+// ════════════════════════════════════════════════════════════════════
+const MarqueeRow = ({ items, reverse = false, speed = 35 }) => {
+  const doubled = [...items, ...items]; // duplicate for seamless loop
+  return (
+    <div style={{ overflow: 'hidden', maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)' }}>
+      <div style={{
+        display: 'flex', gap: 16,
+        animation: `wol-marquee${reverse ? '-rev' : ''} ${speed}s linear infinite`,
+        width: 'max-content',
+      }}>
+        {doubled.map((t, i) => (
+          <div key={i} style={{ width: 300, flexShrink: 0 }}>
+            <Card t={t} variant="marquee" index={i} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const MarqueeLayout = ({ items }) => {
+  const half = Math.ceil(items.length / 2);
+  const row1 = items.slice(0, half);
+  const row2 = items.slice(half);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
+      <MarqueeRow items={row1.length ? row1 : items} speed={40} />
+      <MarqueeRow items={row2.length ? row2 : items} reverse speed={35} />
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════
+// LAYOUT 7 — Spotlight (big quote rotator) — NEW
+// ════════════════════════════════════════════════════════════════════
+const SpotlightLayout = ({ items }) => {
+  const [active, setActive] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setActive(i => (i + 1) % items.length), 5000);
+    return () => clearInterval(t);
+  }, [items.length]);
+  const t = items[active];
+  if (!t) return null;
+  return (
+    <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
+      <div className="wol-card featured" style={{ padding: '3rem 2.5rem', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 20, left: '50%', transform: 'translateX(-50%)', fontSize: 120, lineHeight: 1, color: 'rgba(6,182,212,0.05)', fontFamily: 'Georgia, serif', userSelect: 'none' }}>"</div>
+        <Stars rating={t.Rating || t.rating} />
+        <p className="wol-text" style={{ fontSize: '1.25rem', lineHeight: 1.8, margin: '1.5rem 0', color: '#e2e8f0' }}>
+          "{t.Content || t.text}"
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+          <Avatar name={t.username || t.name} photo={t.UserImageURL || t.photo} size={44} />
+          <div style={{ textAlign: 'left' }}>
+            <p className="wol-author-name">{t.username || t.name}</p>
+            {t.email && <p className="wol-author-meta">{t.email}</p>}
+          </div>
+        </div>
+      </div>
+      {/* Thumbnails */}
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 20, flexWrap: 'wrap' }}>
+        {items.map((item, i) => (
+          <button key={i} onClick={() => setActive(i)}
+            style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${i === active ? 'rgba(6,182,212,0.5)' : 'rgba(255,255,255,0.08)'}`, background: i === active ? 'rgba(6,182,212,0.1)' : 'transparent', color: i === active ? '#06b6d4' : '#64748b', fontSize: '0.75rem', cursor: 'pointer', transition: 'all 150ms' }}>
+            {(item.username || item.name || '').split(' ')[0]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ════════════════════════════════════════════════════════════════════
+// LAYOUT 8 — Animated Scroll (auto-scrolling masonry) — NEW
+// ════════════════════════════════════════════════════════════════════
+const AnimatedScrollLayout = ({ items }) => {
+  const containerRef = useRef(null);
+  const animRef = useRef(null);
+  const [paused, setPaused] = useState(false);
+  const cols = [[], [], []];
+  items.forEach((t, i) => cols[i % 3].push({ t, i }));
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const step = () => {
+      if (!paused && el.scrollTop < el.scrollHeight - el.clientHeight) {
+        el.scrollTop += 0.8;
+      } else if (!paused && el.scrollTop >= el.scrollHeight - el.clientHeight - 2) {
+        el.scrollTop = 0;
+      }
+      animRef.current = requestAnimationFrame(step);
+    };
+    animRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(animRef.current);
+  }, [paused]);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <div ref={containerRef} style={{ maxHeight: 600, overflowY: 'hidden', scrollbarWidth: 'none' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
+          {cols.map((col, ci) => (
+            <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {col.map(({ t, i }) => <Card key={t.id || i} t={t} variant="masonry" index={i} />)}
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Fade overlays */}
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to bottom, #080a0f, transparent)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(to top, #080a0f, transparent)', pointerEvents: 'none' }} />
+      <button onClick={() => setPaused(p => !p)}
+        style={{ position: 'absolute', bottom: 16, right: 16, width: 36, height: 36, borderRadius: '50%', background: 'rgba(13,17,23,0.9)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+        {paused ? <Play size={14} /> : <Pause size={14} />}
+      </button>
+    </div>
+  );
+};
+
+// ─── Embed Panel ──────────────────────────────────────────────────────────────
 const EmbedPanel = ({ spacename, layout, onClose }) => {
   const [copied, setCopied] = useState('');
-  const iframeCode = `<iframe src="${window.location.origin}/walloflove/${layout}/${spacename}" width="100%" height="600" frameborder="0" style="border-radius:16px;"></iframe>`;
-  const scriptCode = `<div id="testiqra-wall" data-space="${spacename}" data-layout="${layout}"></div>\n<script src="${window.location.origin}/embed.js"><\/script>`;
+  const origin = window.location.origin;
+  const iframeCode = `<iframe src="${origin}/testimonialwall/${spacename}?layout=${layout}" width="100%" height="600" frameborder="0" style="border-radius:16px;border:none;"></iframe>`;
 
   const copy = (text, key) => {
     navigator.clipboard.writeText(text);
@@ -193,41 +370,42 @@ const EmbedPanel = ({ spacename, layout, onClose }) => {
   };
 
   return (
-    <div className="embed-overlay" onClick={onClose}>
-      <div className="embed-panel" onClick={e => e.stopPropagation()}>
-        <div className="embed-header">
-          <h3>Embed Your Wall</h3>
-          <button className="btn btn-ghost btn-icon" onClick={onClose}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 2l12 12M14 2L2 14"/></svg>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={onClose}>
+      <div style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 20, padding: '1.75rem', maxWidth: 540, width: '100%', boxShadow: '0 24px 64px rgba(0,0,0,0.8)' }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <h3 style={{ color: '#f1f5f9', fontSize: '1rem', fontWeight: 600 }}>Embed Your Wall</h3>
+          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '6px', color: '#64748b', cursor: 'pointer', display: 'flex' }}>
+            <X size={14} />
           </button>
         </div>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginBottom: '1.25rem' }}>
-          Copy the code below and paste it into your website.
-        </p>
-        <div className="embed-section">
-          <label className="form-label">iFrame Embed</label>
-          <div className="code-block">
-            <code>{iframeCode}</code>
-            <button className="copy-btn" onClick={() => copy(iframeCode, 'iframe')}>
-              {copied === 'iframe' ? '✓ Copied' : 'Copy'}
-            </button>
-          </div>
-        </div>
-        <div className="embed-section">
-          <label className="form-label">Script Embed</label>
-          <div className="code-block">
-            <code>{scriptCode}</code>
-            <button className="copy-btn" onClick={() => copy(scriptCode, 'script')}>
-              {copied === 'script' ? '✓ Copied' : 'Copy'}
-            </button>
-          </div>
+        <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1.25rem' }}>Paste this into your website to embed your Wall of Love.</p>
+        <div style={{ background: '#080a0f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: 14 }}>
+          <code style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: '#94a3b8', display: 'block', wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>{iframeCode}</code>
+          <button onClick={() => copy(iframeCode, 'iframe')}
+            style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 8, color: '#06b6d4', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+            {copied === 'iframe' ? <><Check size={12} /> Copied!</> : <><Copy size={12} /> Copy iFrame</>}
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-/* ─── Main WallOfLove Component ───────────────────────────── */
+// ─── Layout Config ────────────────────────────────────────────────────────────
+const LAYOUTS = [
+  { id: 'masonry',  label: 'Masonry',    icon: <LayoutGrid size={13} />,  desc: 'Pinterest-style columns' },
+  { id: 'grid',     label: 'Grid',       icon: <Grid3X3 size={13} />,     desc: 'Uniform card grid' },
+  { id: 'list',     label: 'List',       icon: <List size={13} />,        desc: 'Single column feed' },
+  { id: 'carousel', label: 'Carousel',   icon: <Rows3 size={13} />,       desc: 'Sliding cards' },
+  { id: 'featured', label: 'Featured',   icon: <Star size={13} />,        desc: 'Hero + grid' },
+  { id: 'marquee',  label: 'Marquee',    icon: <TrendingUp size={13} />,  desc: 'Auto-scrolling rows' },
+  { id: 'spotlight',label: 'Spotlight',  icon: <Sparkles size={13} />,    desc: 'Rotating big quote' },
+  { id: 'animated', label: 'Auto-Scroll',icon: <Zap size={13} />,         desc: 'Animated masonry' },
+];
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function WallOfLove() {
   const { spacename } = useParams();
   const navigate = useNavigate();
@@ -237,519 +415,262 @@ export default function WallOfLove() {
   const [loading, setLoading] = useState(true);
   const [layout, setLayout] = useState('masonry');
   const [filter, setFilter] = useState('all');
-  const [minRating, setMinRating] = useState(0);
   const [search, setSearch] = useState('');
+  const [minRating, setMinRating] = useState(0);
   const [showEmbed, setShowEmbed] = useState(false);
   const [spaceInfo, setSpaceInfo] = useState(null);
+  const [stats, setStats] = useState({ total: 0, avg: 0 });
 
-  /* Fetch testimonials */
   useEffect(() => {
     const token = localStorage.getItem('token');
     Promise.all([
-      fetch(`/api/v1/fetchtestimonials/${spacename}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      }).then(r => r.json()).catch(() => ({ testimonials: [] })),
-      fetch(`/api/v1/spaceinfo/${spacename}`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      }).then(r => r.json()).catch(() => null),
-    ]).then(([tData, sData]) => {
-      const items = tData?.testimonials || tData?.data || [];
-      setTestimonials(items);
-      setFiltered(items);
-      setSpaceInfo(sData?.space || sData || null);
+      axios.get(`${BACKEND_URL}/api/v1/fetchtestimonials`, {
+        params: { spacename },
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(() => ({ data: { testimonials: [] } })),
+      axios.get(`${BACKEND_URL}/api/v1/spaceinfo`, {
+        params: { spacename },
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(() => ({ data: null })),
+    ]).then(([tRes, sRes]) => {
+      const list = tRes.data?.testimonials || [];
+      setTestimonials(list);
+      setSpaceInfo(sRes.data?.spaceinfo || null);
+      const avg = list.length ? (list.reduce((s, t) => s + (t.Rating || 0), 0) / list.length).toFixed(1) : 0;
+      setStats({ total: list.length, avg });
       setLoading(false);
     });
   }, [spacename]);
 
-  /* Apply filters */
   useEffect(() => {
-    let result = [...testimonials];
-    if (filter === 'video') result = result.filter(t => t.videoUrl);
-    if (filter === 'text')  result = result.filter(t => !t.videoUrl && t.text);
-    if (minRating > 0)      result = result.filter(t => (t.rating || 0) >= minRating);
-    if (search.trim())      result = result.filter(t =>
-      [t.name, t.text, t.company, t.role].join(' ').toLowerCase().includes(search.toLowerCase())
-    );
-    setFiltered(result);
+    let list = [...testimonials];
+    if (filter === 'video') list = list.filter(t => t.videoUrl || t.VideoURL);
+    if (filter === 'text') list = list.filter(t => !t.videoUrl && !t.VideoURL);
+    if (filter === 'liked') list = list.filter(t => t.liked);
+    if (minRating > 0) list = list.filter(t => (t.Rating || 0) >= minRating);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(t => [t.username, t.name, t.Content, t.text, t.email].join(' ').toLowerCase().includes(q));
+    }
+    setFiltered(list);
   }, [testimonials, filter, minRating, search]);
-
-  const LAYOUTS = [
-    { id: 'masonry', label: 'Masonry', icon: '⊞' },
-    { id: 'grid',    label: 'Grid',    icon: '⊟' },
-    { id: 'list',    label: 'List',    icon: '≡' },
-    { id: 'carousel',label: 'Carousel',icon: '◁▷' },
-    { id: 'featured',label: 'Featured',icon: '★' },
-  ];
 
   const renderLayout = () => {
     if (loading) return (
-      <div className="loading-state">
-        <div className="spinner" />
-        <p>Loading testimonials…</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 16 }}>
+        <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid rgba(6,182,212,0.2)', borderTopColor: '#06b6d4', animation: 'wol-spin 0.8s linear infinite' }} />
+        <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Loading testimonials…</p>
       </div>
     );
     if (!filtered.length) return (
-      <div className="empty-state">
-        <div className="empty-icon">◎</div>
-        <h3>No testimonials found</h3>
-        <p>Try adjusting your filters</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 12 }}>
+        <div style={{ width: 60, height: 60, borderRadius: 16, background: '#0d1117', border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Heart size={24} style={{ color: '#334155' }} />
+        </div>
+        <p style={{ color: '#475569', fontWeight: 500 }}>No testimonials found</p>
+        <p style={{ color: '#334155', fontSize: '0.875rem' }}>Try adjusting your filters</p>
       </div>
     );
     switch (layout) {
-      case 'grid':     return <GridLayout testimonials={filtered} />;
-      case 'list':     return <ListLayout testimonials={filtered} />;
-      case 'carousel': return <CarouselLayout testimonials={filtered} />;
-      case 'featured': return <FeaturedLayout testimonials={filtered} />;
-      default:         return <MasonryLayout testimonials={filtered} />;
+      case 'grid':      return <GridLayout items={filtered} />;
+      case 'list':      return <ListLayout items={filtered} />;
+      case 'carousel':  return <CarouselLayout items={filtered} />;
+      case 'featured':  return <FeaturedLayout items={filtered} />;
+      case 'marquee':   return <MarqueeLayout items={filtered} />;
+      case 'spotlight': return <SpotlightLayout items={filtered} />;
+      case 'animated':  return <AnimatedScrollLayout items={filtered} />;
+      default:          return <MasonryLayout items={filtered} />;
     }
   };
 
   return (
     <>
       <style>{`
-        .wall-page {
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap');
+
+        .wol-page {
           min-height: 100vh;
-          background: #020617;
-          font-family: 'DM Sans', system-ui, sans-serif;
-        }
-
-        /* ── Top bar ── */
-        .wall-topbar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 1rem 2rem;
-          border-bottom: 1px solid rgba(139,92,246,0.12);
-          background: rgba(13,21,38,0.9);
-          backdrop-filter: blur(12px);
-          position: sticky;
-          top: 0;
-          z-index: 50;
-        }
-        .wall-brand {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-weight: 700;
-          font-size: 1.1rem;
+          background: #080a0f;
           color: #f1f5f9;
+          font-family: 'DM Sans', sans-serif;
         }
-        .wall-brand-dot {
-          width: 28px; height: 28px;
-          border-radius: 8px;
-          background: linear-gradient(135deg,#7c3aed,#a855f7,#f59e0b);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 14px; color: #fff;
-        }
-        .wall-topbar-actions { display: flex; gap: 8px; align-items: center; }
-
-        /* ── Hero ── */
-        .wall-hero {
-          text-align: center;
-          padding: 4rem 2rem 2rem;
-          background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(139,92,246,0.18) 0%, transparent 70%);
-        }
-        .wall-hero h1 {
-          font-size: clamp(1.75rem, 4vw, 3rem);
-          font-family: 'Instrument Serif', Georgia, serif;
-          color: #f1f5f9;
-          margin-bottom: 0.5rem;
-        }
-        .wall-hero p { color: #94a3b8; font-size: 1rem; margin-bottom: 1.5rem; }
-        .wall-stat {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          background: rgba(139,92,246,0.1);
-          border: 1px solid rgba(139,92,246,0.2);
-          border-radius: 999px;
-          padding: 6px 16px;
-          font-size: 0.875rem;
-          color: #c4b5fd;
-        }
-
-        /* ── Controls ── */
-        .wall-controls {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 12px;
-          align-items: center;
-          padding: 1.25rem 2rem;
-          border-bottom: 1px solid rgba(139,92,246,0.1);
-          background: rgba(13,21,38,0.5);
-        }
-        .layout-switcher {
-          display: flex;
-          gap: 4px;
-          background: rgba(15,23,42,0.8);
-          border: 1px solid rgba(139,92,246,0.15);
-          border-radius: 10px;
-          padding: 4px;
-        }
-        .layout-btn {
-          padding: 6px 12px;
-          border-radius: 7px;
-          font-size: 0.8rem;
-          font-weight: 500;
-          border: none;
-          background: transparent;
-          color: #64748b;
-          cursor: pointer;
-          transition: all 200ms;
-          display: flex; align-items: center; gap: 5px;
-        }
-        .layout-btn.active {
-          background: rgba(139,92,246,0.2);
-          color: #c4b5fd;
-          border: 1px solid rgba(139,92,246,0.3);
-        }
-        .wall-search {
-          flex: 1;
-          min-width: 200px;
-          max-width: 320px;
-          background: rgba(10,19,34,0.9);
-          border: 1px solid rgba(139,92,246,0.2);
-          border-radius: 9px;
-          color: #f1f5f9;
-          font-family: inherit;
-          font-size: 0.875rem;
-          padding: 8px 14px;
-          outline: none;
-          transition: border-color 150ms;
-        }
-        .wall-search:focus { border-color: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,0.12); }
-        .wall-search::placeholder { color: #475569; }
-        .filter-group { display: flex; gap: 6px; flex-wrap: wrap; }
-        .filter-btn {
-          padding: 6px 14px;
-          border-radius: 999px;
-          font-size: 0.8rem;
-          font-weight: 500;
-          border: 1px solid rgba(139,92,246,0.2);
-          background: transparent;
-          color: #94a3b8;
-          cursor: pointer;
-          transition: all 150ms;
-        }
-        .filter-btn.active {
-          background: rgba(139,92,246,0.15);
-          color: #c4b5fd;
-          border-color: rgba(139,92,246,0.4);
-        }
-        .rating-filter {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 0.8rem;
-          color: #64748b;
-        }
-        .rating-filter select {
-          background: rgba(10,19,34,0.9);
-          border: 1px solid rgba(139,92,246,0.2);
-          border-radius: 7px;
-          color: #94a3b8;
-          font-size: 0.8rem;
-          padding: 6px 10px;
-          outline: none;
-          cursor: pointer;
-        }
-        .controls-right { margin-left: auto; display: flex; gap: 8px; }
-        .embed-btn {
-          display: flex; align-items: center; gap: 6px;
-          padding: 7px 14px;
-          border-radius: 8px;
-          font-size: 0.825rem;
-          font-weight: 500;
-          border: 1px solid rgba(139,92,246,0.3);
-          background: rgba(139,92,246,0.08);
-          color: #c4b5fd;
-          cursor: pointer;
-          transition: all 150ms;
-        }
-        .embed-btn:hover { background: rgba(139,92,246,0.18); }
-
-        /* ── Content area ── */
-        .wall-content { padding: 2rem; max-width: 1400px; margin: 0 auto; }
-
-        /* ── Masonry ── */
-        .masonry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-        @media (max-width: 900px) { .masonry-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 600px) { .masonry-grid { grid-template-columns: 1fr; } }
-        .masonry-col { display: flex; flex-direction: column; gap: 16px; }
-
-        /* ── Grid ── */
-        .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
-
-        /* ── List ── */
-        .list-layout { display: flex; flex-direction: column; gap: 12px; max-width: 800px; margin: 0 auto; }
-
-        /* ── Carousel ── */
-        .carousel-wrapper { position: relative; overflow: hidden; }
-        .carousel-track-outer { overflow: hidden; }
-        .carousel-track { display: flex; gap: 16px; transition: transform 400ms cubic-bezier(0.4,0,0.2,1); }
-        .carousel-item { min-width: 340px; flex-shrink: 0; }
-        .carousel-arrow {
-          position: absolute; top: 50%; transform: translateY(-50%);
-          z-index: 10;
-          width: 40px; height: 40px;
-          border-radius: 50%;
-          background: rgba(13,21,38,0.9);
-          border: 1px solid rgba(139,92,246,0.3);
-          color: #c4b5fd;
-          cursor: pointer;
-          display: flex; align-items: center; justify-content: center;
-          transition: all 150ms;
-        }
-        .carousel-arrow:hover { background: rgba(139,92,246,0.2); }
-        .carousel-arrow:disabled { opacity: 0.3; cursor: default; }
-        .carousel-arrow.left { left: -16px; }
-        .carousel-arrow.right { right: -16px; }
-        .carousel-dots { display: flex; justify-content: center; gap: 6px; margin-top: 1.5rem; }
-        .dot {
-          width: 6px; height: 6px; border-radius: 50%;
-          background: #334155; border: none; cursor: pointer; transition: all 200ms;
-        }
-        .dot.active { background: #8b5cf6; width: 20px; border-radius: 3px; }
-
-        /* ── Featured ── */
-        .featured-layout { display: flex; flex-direction: column; gap: 16px; }
-        .hero-testimonial .testimonial-card { padding: 2rem; }
-        .hero-testimonial .testimonial-text { font-size: 1.2rem; }
-        .featured-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
 
         /* ── Cards ── */
-        .testimonial-card {
-          background: linear-gradient(145deg, #152040 0%, #0f172a 100%);
-          border: 1px solid rgba(139,92,246,0.12);
-          border-radius: 14px;
+        .wol-card {
+          background: #0d1117;
+          border: 1px solid rgba(255,255,255,0.07);
+          border-radius: 16px;
           overflow: hidden;
           transition: border-color 250ms, transform 250ms, box-shadow 250ms;
-          animation: fadeUp 0.4s ease both;
+          animation: wol-fadeUp 0.4s ease both;
         }
-        .testimonial-card:hover {
-          border-color: rgba(139,92,246,0.3);
+        .wol-card:hover {
+          border-color: rgba(6,182,212,0.2);
           transform: translateY(-2px);
-          box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(139,92,246,0.15);
+          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         }
-        .testimonial-card.featured {
-          border-color: rgba(251,191,36,0.25);
-          background: linear-gradient(145deg, #1a2040 0%, #0f172a 100%);
+        .wol-card.featured {
+          border-color: rgba(6,182,212,0.2);
+          background: linear-gradient(145deg, #0d1520 0%, #0d1117 100%);
         }
-        .testimonial-card.featured:hover { border-color: rgba(251,191,36,0.4); box-shadow: 0 0 32px rgba(251,191,36,0.1); }
+        .wol-card.featured:hover { border-color: rgba(6,182,212,0.4); box-shadow: 0 0 32px rgba(6,182,212,0.08); }
+        .wol-card.hero { border-color: rgba(6,182,212,0.25); }
+        .wol-card-body { padding: 1.1rem; }
+        .wol-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .wol-text { color: #cbd5e1; font-size: 0.875rem; line-height: 1.75; margin: 10px 0; }
+        .wol-author { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+        .wol-author-name { font-size: 0.85rem; font-weight: 600; color: #f1f5f9; }
+        .wol-author-meta { font-size: 0.75rem; color: #64748b; margin-top: 1px; }
+        .wol-date { font-size: 0.72rem; color: #475569; margin-top: 2px; }
+        .wol-featured-badge { font-size: 0.68rem; font-weight: 700; color: #06b6d4; background: rgba(6,182,212,0.1); border: 1px solid rgba(6,182,212,0.2); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
+        .wol-inline-img { width: 100%; border-radius: 8px; margin-top: 10px; max-height: 180px; object-fit: cover; border: 1px solid rgba(255,255,255,0.06); }
 
-        .card-body { padding: 1.25rem; }
-        .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-        .testimonial-text {
-          color: #cbd5e1;
-          font-size: 0.9rem;
-          line-height: 1.7;
-          margin: 10px 0;
-          quotes: none;
-        }
-        .layout-hero .testimonial-text { font-size: 1.15rem; color: #e2e8f0; }
-        .author-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(139,92,246,0.1); }
-        .author-name { font-size: 0.875rem; font-weight: 600; color: #f1f5f9; }
-        .author-meta { font-size: 0.775rem; color: #64748b; margin-top: 1px; }
+        /* ── Video ── */
+        .wol-video-wrap { position: relative; cursor: pointer; }
+        .wol-play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.35); border-radius: 10px 10px 0 0; transition: background 150ms; }
+        .wol-video-wrap:hover .wol-play-overlay { background: rgba(0,0,0,0.55); }
+        .wol-play-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(6,182,212,0.85); display: flex; align-items: center; justify-content: center; color: #fff; box-shadow: 0 0 20px rgba(6,182,212,0.4); transition: transform 150ms; }
+        .wol-video-wrap:hover .wol-play-btn { transform: scale(1.1); }
+        .wol-video-badge { position: absolute; top: 10px; left: 10px; background: rgba(8,10,15,0.85); border: 1px solid rgba(255,255,255,0.1); border-radius: 999px; padding: 3px 8px; font-size: 0.68rem; color: #94a3b8; font-weight: 600; display: flex; align-items: center; gap: 4px; backdrop-filter: blur(8px); }
 
-        .featured-badge {
-          font-size: 0.7rem; font-weight: 600;
-          color: #fbbf24;
-          background: rgba(251,191,36,0.1);
-          border: 1px solid rgba(251,191,36,0.2);
-          border-radius: 999px;
-          padding: 2px 8px;
-        }
+        /* ── Carousel arrows ── */
+        .wol-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 10; width: 38px; height: 38px; border-radius: 50%; background: #0d1117; border: 1px solid rgba(255,255,255,0.1); color: #94a3b8; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 150ms; }
+        .wol-arrow:hover { background: rgba(6,182,212,0.1); border-color: rgba(6,182,212,0.3); color: #06b6d4; }
+        .wol-arrow:disabled { opacity: 0.3; cursor: default; }
+        .wol-arrow.left { left: 0; }
+        .wol-arrow.right { right: 0; }
 
-        /* ── Video card ── */
-        .video-wrapper { position: relative; cursor: pointer; }
-        .play-overlay {
-          position: absolute; inset: 0;
-          display: flex; align-items: center; justify-content: center;
-          background: rgba(0,0,0,0.35);
-          border-radius: 10px 10px 0 0;
-          transition: background 150ms;
+        /* ── Layout selector ── */
+        .wol-layout-scroll { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+        .wol-layout-scroll::-webkit-scrollbar { display: none; }
+        .wol-layout-btn {
+          display: flex; align-items: center; gap: 6px;
+          padding: 6px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.07);
+          background: #0d1117; color: #64748b; font-size: 0.8rem; font-weight: 500;
+          cursor: pointer; transition: all 150ms; white-space: nowrap; font-family: 'DM Sans', sans-serif;
         }
-        .video-wrapper:hover .play-overlay { background: rgba(0,0,0,0.5); }
-        .play-btn {
-          width: 48px; height: 48px; border-radius: 50%;
-          background: rgba(139,92,246,0.85);
-          display: flex; align-items: center; justify-content: center;
-          color: #fff;
-          box-shadow: 0 0 20px rgba(139,92,246,0.5);
-          transition: transform 150ms;
-        }
-        .video-wrapper:hover .play-btn { transform: scale(1.1); }
-        .video-badge {
-          position: absolute; top: 10px; left: 10px;
-          background: rgba(13,21,38,0.85);
-          border: 1px solid rgba(139,92,246,0.3);
-          border-radius: 999px;
-          padding: 3px 8px;
-          font-size: 0.7rem;
-          color: #c4b5fd;
-          font-weight: 600;
-          display: flex; align-items: center; gap: 4px;
-          backdrop-filter: blur(8px);
-        }
+        .wol-layout-btn:hover { color: #f1f5f9; border-color: rgba(255,255,255,0.15); }
+        .wol-layout-btn.active { background: rgba(6,182,212,0.1); border-color: rgba(6,182,212,0.3); color: #06b6d4; }
 
-        /* ── States ── */
-        .loading-state, .empty-state {
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          min-height: 300px; gap: 12px; color: #64748b;
-        }
-        .spinner {
-          width: 36px; height: 36px;
-          border: 3px solid rgba(139,92,246,0.2);
-          border-top-color: #8b5cf6;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-        }
-        .empty-icon { font-size: 3rem; color: #334155; }
-        .empty-state h3 { color: #475569; font-size: 1rem; }
+        /* ── Filter pills ── */
+        .wol-filter-btn { padding: 5px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 500; border: 1px solid rgba(255,255,255,0.08); background: transparent; color: #64748b; cursor: pointer; transition: all 150ms; font-family: 'DM Sans', sans-serif; }
+        .wol-filter-btn:hover { color: #f1f5f9; border-color: rgba(255,255,255,0.15); }
+        .wol-filter-btn.active { background: rgba(6,182,212,0.1); border-color: rgba(6,182,212,0.3); color: #06b6d4; }
 
-        /* ── Embed Panel ── */
-        .embed-overlay {
-          position: fixed; inset: 0;
-          background: rgba(0,0,0,0.7);
-          backdrop-filter: blur(6px);
-          z-index: 100;
-          display: flex; align-items: center; justify-content: center;
-          padding: 1rem;
-        }
-        .embed-panel {
-          background: #0d1526;
-          border: 1px solid rgba(139,92,246,0.2);
-          border-radius: 16px;
-          padding: 1.75rem;
-          max-width: 560px;
-          width: 100%;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.7);
-        }
-        .embed-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
-        .embed-header h3 { font-size: 1.1rem; font-weight: 600; color: #f1f5f9; }
-        .embed-section { margin-bottom: 1.25rem; }
-        .code-block {
-          background: #020617;
-          border: 1px solid rgba(139,92,246,0.2);
-          border-radius: 8px;
-          padding: 12px;
-          margin-top: 6px;
-          position: relative;
-          overflow: hidden;
-        }
-        .code-block code { font-family: 'Courier New', monospace; font-size: 0.775rem; color: #94a3b8; word-break: break-all; display: block; }
-        .copy-btn {
-          margin-top: 8px;
-          font-size: 0.775rem;
-          font-weight: 600;
-          color: #a78bfa;
-          background: rgba(139,92,246,0.1);
-          border: 1px solid rgba(139,92,246,0.25);
-          border-radius: 6px;
-          padding: 4px 12px;
-          cursor: pointer;
-          transition: all 150ms;
-        }
-        .copy-btn:hover { background: rgba(139,92,246,0.2); }
+        /* ── Search ── */
+        .wol-search { background: #0d1117; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: #f1f5f9; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; padding: 7px 14px 7px 36px; outline: none; transition: border-color 150ms; width: 200px; }
+        .wol-search:focus { border-color: rgba(6,182,212,0.4); }
+        .wol-search::placeholder { color: #475569; }
 
-        /* ── Btn overrides ── */
-        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-family: inherit; font-size: 0.875rem; font-weight: 500; cursor: pointer; border: none; transition: all 200ms; }
-        .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid transparent; }
-        .btn-ghost:hover { background: rgba(139,92,246,0.1); color: #f1f5f9; border-color: rgba(139,92,246,0.2); }
-        .btn-icon { width: 34px; height: 34px; padding: 0; }
-        .btn-primary { background: linear-gradient(135deg,#7c3aed,#a855f7,#f59e0b); color: #fff; box-shadow: 0 0 20px rgba(139,92,246,0.4); }
-        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 32px rgba(139,92,246,0.6); }
+        /* ── Marquee animation ── */
+        @keyframes wol-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @keyframes wol-marquee-rev { from { transform: translateX(-50%); } to { transform: translateX(0); } }
 
-        @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        /* ── Utility ── */
+        @keyframes wol-fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes wol-spin { to { transform: rotate(360deg); } }
       `}</style>
 
-      <div className="wall-page">
+      <div className="wol-page">
         {/* ── Top Bar ── */}
-        <div className="wall-topbar">
-          <div className="wall-brand">
-            <div className="wall-brand-dot">T</div>
-            TestiQra
-          </div>
-          <div className="wall-topbar-actions">
-            <span style={{ fontSize: '0.825rem', color: '#64748b' }}>
-              {spaceInfo?.name || spacename}
-            </span>
-            <button className="btn btn-primary" onClick={() => navigate(`/testimonial.to/${spacename}`)}>
-              + Submit Testimonial
-            </button>
+        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(8,10,15,0.9)', backdropFilter: 'blur(12px)', position: 'sticky', top: 0, zIndex: 50 }}>
+          <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0.9rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: '#06b6d4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Zap size={13} fill="black" style={{ color: 'black' }} />
+                </div>
+                <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, color: '#f1f5f9', fontSize: '1rem' }}>TestiQra</span>
+              </div>
+              <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.1)' }} />
+              {spaceInfo && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {spaceInfo.logo && <img src={spaceInfo.logo} alt="" style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover', border: '1px solid rgba(255,255,255,0.1)' }} />}
+                  <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, color: '#f1f5f9', fontSize: '0.95rem' }}>{spaceInfo.space_name || spacename}</span>
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={() => setShowEmbed(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: '#94a3b8', fontSize: '0.825rem', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', transition: 'all 150ms' }}>
+                <ExternalLink size={13} /> Embed
+              </button>
+              <button onClick={() => navigate(`/space/${spacename}`)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: '1px solid rgba(6,182,212,0.3)', background: 'rgba(6,182,212,0.1)', color: '#06b6d4', fontSize: '0.825rem', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif', fontWeight: 500 }}>
+                ← Dashboard
+              </button>
+            </div>
           </div>
         </div>
 
         {/* ── Hero ── */}
-        <div className="wall-hero">
-          <p className="section-eyebrow" style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#a78bfa', marginBottom: '0.75rem' }}>
-            Wall of Love
+        <div style={{ textAlign: 'center', padding: '3rem 1.5rem 2rem', background: 'radial-gradient(ellipse 60% 40% at 50% 0%, rgba(6,182,212,0.1) 0%, transparent 70%)' }}>
+          <p style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em', color: '#06b6d4', marginBottom: 12 }}>Wall of Love</p>
+          <h1 style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 'clamp(1.6rem, 4vw, 2.75rem)', color: '#f1f5f9', marginBottom: 8 }}>
+            {spaceInfo?.space_name || spacename}
+          </h1>
+          <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: 20 }}>
+            {spaceInfo?.description || 'Real words from real customers'}
           </p>
-          <h1>{spaceInfo?.name || spacename}</h1>
-          <p>{spaceInfo?.description || 'Real words from real customers'}</p>
-          <span className="wall-stat">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="#fbbf24"><path d="M7 1l1.8 3.6L13 5.3l-3 2.9.7 4.1L7 10.3l-3.7 2L4 8.2 1 5.3l4.2-.7z"/></svg>
-            {testimonials.length} testimonials
-          </span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 16, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 999, padding: '8px 20px', fontSize: '0.825rem' }}>
+            <span style={{ color: '#94a3b8' }}>
+              <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{stats.total}</span> testimonials
+            </span>
+            <span style={{ color: '#334155' }}>·</span>
+            <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Star size={12} fill="#fbbf24" style={{ color: '#fbbf24' }} />
+              <span style={{ color: '#f1f5f9', fontWeight: 700 }}>{stats.avg}</span> avg rating
+            </span>
+          </div>
         </div>
 
         {/* ── Controls ── */}
-        <div className="wall-controls">
-          {/* Layout switcher */}
-          <div className="layout-switcher">
-            {LAYOUTS.map(l => (
-              <button key={l.id} className={`layout-btn ${layout === l.id ? 'active' : ''}`} onClick={() => setLayout(l.id)}>
-                <span style={{ fontSize: 11 }}>{l.icon}</span>
-                {l.label}
-              </button>
-            ))}
-          </div>
+        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(8,10,15,0.6)', padding: '0.9rem 1.5rem' }}>
+          <div style={{ maxWidth: 1400, margin: '0 auto', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Layout switcher */}
+            <div className="wol-layout-scroll">
+              {LAYOUTS.map(l => (
+                <button key={l.id} className={`wol-layout-btn ${layout === l.id ? 'active' : ''}`} onClick={() => setLayout(l.id)} title={l.desc}>
+                  {l.icon} {l.label}
+                </button>
+              ))}
+            </div>
 
-          {/* Search */}
-          <input className="wall-search" placeholder="Search testimonials…" value={search} onChange={e => setSearch(e.target.value)} />
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              {/* Filter pills */}
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[['all','All'],['text','Text'],['video','Video'],['liked','❤️ Liked']].map(([f, label]) => (
+                  <button key={f} className={`wol-filter-btn ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{label}</button>
+                ))}
+              </div>
 
-          {/* Filters */}
-          <div className="filter-group">
-            {['all','text','video'].map(f => (
-              <button key={f} className={`filter-btn ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-                {f === 'all' ? 'All' : f === 'text' ? '✍ Text' : '▶ Video'}
-              </button>
-            ))}
-          </div>
+              {/* Min rating */}
+              <select value={minRating} onChange={e => setMinRating(+e.target.value)}
+                style={{ background: '#0d1117', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: '#94a3b8', fontSize: '0.8rem', padding: '6px 10px', outline: 'none', cursor: 'pointer', fontFamily: 'DM Sans, sans-serif' }}>
+                {[0,1,2,3,4,5].map(r => <option key={r} value={r}>{r === 0 ? 'Any ★' : `${r}+ ★`}</option>)}
+              </select>
 
-          {/* Rating */}
-          <div className="rating-filter">
-            <span>Min ★</span>
-            <select value={minRating} onChange={e => setMinRating(+e.target.value)}>
-              {[0,1,2,3,4,5].map(r => <option key={r} value={r}>{r === 0 ? 'Any' : `${r}+`}</option>)}
-            </select>
-          </div>
-
-          {/* Right actions */}
-          <div className="controls-right">
-            <button className="embed-btn" onClick={() => setShowEmbed(true)}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M9 2h3v3M13 1L8 6M5 12H2V9M1 13l5-5"/>
-              </svg>
-              Embed
-            </button>
+              {/* Search */}
+              <div style={{ position: 'relative' }}>
+                <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#475569' }} />
+                <input className="wol-search" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* ── Main Content ── */}
-        <div className="wall-content">
+        {/* ── Content ── */}
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '1.75rem 1.5rem 4rem' }}>
           {renderLayout()}
         </div>
 
         {/* ── Footer ── */}
-        <div style={{ textAlign: 'center', padding: '2rem', color: '#334155', fontSize: '0.8rem', borderTop: '1px solid rgba(139,92,246,0.08)' }}>
-          Powered by <span style={{ color: '#a78bfa', fontWeight: 600 }}>TestiQra</span>
+        <div style={{ textAlign: 'center', padding: '1.5rem', color: '#334155', fontSize: '0.78rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          Powered by <span style={{ color: '#06b6d4', fontWeight: 700 }}>TestiQra</span>
         </div>
-
-        {/* ── Embed Panel ── */}
-        {showEmbed && <EmbedPanel spacename={spacename} layout={layout} onClose={() => setShowEmbed(false)} />}
       </div>
+
+      {showEmbed && <EmbedPanel spacename={spacename} layout={layout} onClose={() => setShowEmbed(false)} />}
     </>
   );
 }

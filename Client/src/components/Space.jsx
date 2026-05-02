@@ -10,7 +10,7 @@ import {
   MessageSquare, Copy, Check,
   RefreshCw, GripVertical, Edit3,
   ExternalLink,
-  ChevronDown, Zap, ArrowRight
+  ChevronDown, Zap, ArrowRight, Send, Mail
 } from 'lucide-react';
 
 const BACKEND_URL = "http://localhost:3001";
@@ -523,6 +523,122 @@ ${excerpts}`
   );
 };
 
+// ─── Email Reply Modal ────────────────────────────────────────────────────────
+const EmailReplyModal = ({ testimonial, initialReply, onClose }) => {
+  const [replyText, setReplyText] = useState(initialReply || '');
+  const [subject, setSubject] = useState(`Thank you for your testimonial, ${testimonial.username}!`);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSend = async () => {
+    if (!replyText.trim()) { toast.error('Reply cannot be empty'); return; }
+    setSending(true);
+    try {
+      await axios.post(`${BACKEND_URL}/api/v1/email/send-reply`, {
+        to: testimonial.email,
+        subject,
+        body: replyText,
+        fromName: 'TestiQra Team',
+      }, { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } });
+      setSent(true);
+      toast.success(`Reply sent to ${testimonial.email}`);
+      setTimeout(onClose, 1500);
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Failed to send reply');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[#0d1117] border border-white/10 rounded-2xl w-full max-w-lg shadow-2xl">
+        <div className="flex items-center justify-between p-5 border-b border-white/8">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
+              <Mail size={15} className="text-violet-400" />
+            </div>
+            <div>
+              <h2 className="text-white font-semibold text-sm">Send Reply</h2>
+              <p className="text-gray-600 text-xs">To: {testimonial.email}</p>
+            </div>
+          </div>
+          <button onClick={onClose}
+            className="p-1.5 rounded-xl bg-white/4 hover:bg-white/8 text-gray-500 hover:text-white transition-all">
+            <X size={15} />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Recipient info */}
+          <div className="flex items-center gap-3 p-3 bg-white/3 border border-white/6 rounded-xl">
+            <img
+              src={testimonial.UserImageURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(testimonial.username)}&backgroundColor=0d1117&textColor=8b5cf6`}
+              alt="" className="w-8 h-8 rounded-lg object-cover border border-white/10"
+            />
+            <div>
+              <p className="text-white text-sm font-medium">{testimonial.username}</p>
+              <p className="text-gray-600 text-xs">{testimonial.email}</p>
+            </div>
+            <StarRating value={testimonial.Rating} />
+          </div>
+
+          {/* Subject */}
+          <div>
+            <label className="text-gray-500 text-[10px] uppercase tracking-widest block mb-1.5">Subject</label>
+            <input
+              value={subject}
+              onChange={e => setSubject(e.target.value)}
+              className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500/60 transition-colors"
+            />
+          </div>
+
+          {/* Reply body */}
+          <div>
+            <label className="text-gray-500 text-[10px] uppercase tracking-widest block mb-1.5">
+              Your reply <span className="text-violet-400 normal-case">(editable)</span>
+            </label>
+            <textarea
+              value={replyText}
+              onChange={e => setReplyText(e.target.value)}
+              rows={6}
+              placeholder="Write your reply here…"
+              className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500/60 transition-colors resize-none leading-relaxed"
+            />
+            <p className="text-gray-700 text-xs mt-1">{replyText.length} characters</p>
+          </div>
+
+          {/* Original testimonial preview */}
+          <div className="p-3 bg-white/2 border border-white/5 rounded-xl">
+            <p className="text-gray-600 text-[10px] uppercase tracking-widest mb-1.5">Original testimonial</p>
+            <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">"{testimonial.Content}"</p>
+          </div>
+        </div>
+
+        <div className="p-5 border-t border-white/8 flex gap-3">
+          <button onClick={onClose}
+            className="px-4 py-2.5 bg-white/4 border border-white/8 hover:bg-white/8 text-gray-400 rounded-xl text-sm transition-all">
+            Cancel
+          </button>
+          <button onClick={handleSend} disabled={sending || sent}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all
+              ${sent
+                ? 'bg-emerald-600/20 border border-emerald-500/30 text-emerald-400'
+                : sending
+                  ? 'bg-violet-600/30 text-violet-400/50 cursor-not-allowed'
+                  : 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20'}`}>
+            {sent
+              ? <><Check size={14} /> Sent!</>
+              : sending
+                ? <><RefreshCw size={14} className="animate-spin" /> Sending…</>
+                : <><Send size={14} /> Send Reply</>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Testimonial Card ─────────────────────────────────────────────────────────
 const TestimonialCard = ({ testimonial, onLike, isReordering }) => {
   const isVideo = !testimonial.isTextContent;
@@ -530,6 +646,7 @@ const TestimonialCard = ({ testimonial, onLike, isReordering }) => {
   const [replyLoading, setReplyLoading] = useState(false);
   const [replyCopied, setReplyCopied] = useState(false);
   const [showReply, setShowReply] = useState(false);
+  const [showEmailModal, setShowEmailModal] = useState(false);
 
   const generateReply = async () => {
     if (reply) { setShowReply(r => !r); return; }
@@ -573,6 +690,15 @@ Return ONLY valid JSON:
       ${testimonial.liked
         ? 'border-rose-500/30 shadow-rose-500/5 shadow-lg'
         : 'border-white/7 hover:border-white/12'}`}>
+
+      {/* Email Reply Modal — rendered inside the card so it has access to testimonial */}
+      {showEmailModal && (
+        <EmailReplyModal
+          testimonial={testimonial}
+          initialReply={reply}
+          onClose={() => setShowEmailModal(false)}
+        />
+      )}
 
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
@@ -620,7 +746,7 @@ Return ONLY valid JSON:
 
       {/* ── AI Reply Section ── */}
       {testimonial.isTextContent && (
-        <div className="mt-3">
+        <div className="mt-3 space-y-2">
           <button
             onClick={generateReply}
             disabled={replyLoading}
@@ -633,16 +759,23 @@ Return ONLY valid JSON:
           </button>
 
           {showReply && (
-            <div className="mt-2 p-3 bg-purple-500/5 border border-purple-500/15 rounded-xl">
+            <div className="p-3 bg-purple-500/5 border border-purple-500/15 rounded-xl">
               {replyLoading
                 ? <div className="h-4 bg-white/5 rounded animate-pulse" />
                 : (
                   <>
-                    <p className="text-gray-300 text-xs leading-relaxed mb-2">{reply}</p>
-                    <button onClick={copyReply}
-                      className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-                      {replyCopied ? <><Check size={11} /> Copied!</> : <><Copy size={11} /> Copy reply</>}
-                    </button>
+                    <p className="text-gray-300 text-xs leading-relaxed mb-3">{reply}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={copyReply}
+                        className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors px-2.5 py-1.5 bg-purple-500/10 rounded-lg border border-purple-500/20 hover:bg-purple-500/20">
+                        {replyCopied ? <><Check size={11} /> Copied!</> : <><Copy size={11} /> Copy</>}
+                      </button>
+                      {/* ── NEW: Send reply button → opens EmailReplyModal ── */}
+                      <button onClick={() => setShowEmailModal(true)}
+                        className="flex items-center gap-1.5 text-xs text-violet-300 hover:text-white transition-colors px-2.5 py-1.5 bg-violet-600/15 rounded-lg border border-violet-500/25 hover:bg-violet-600/25">
+                        <Send size={11} /> Send to reviewer
+                      </button>
+                    </div>
                   </>
                 )
               }
@@ -670,7 +803,6 @@ export default function Space() {
   const [search, setSearch] = useState('');
   const [isReordering, setIsReordering] = useState(false);
   const [showAISummary, setShowAISummary] = useState(false);
-  // ✅ FIX: All three modal states declared here
   const [showHighlights, setShowHighlights] = useState(false);
   const [showImprovement, setShowImprovement] = useState(false);
   const [stats, setStats] = useState({ total: 0, liked: 0, avgRating: 0, video: 0 });
@@ -761,7 +893,6 @@ export default function Space() {
         style: { background: '#111318', color: '#fff', border: '1px solid rgba(255,255,255,.1)', borderRadius: '14px' }
       }} />
 
-      {/* ✅ FIX: All three modals rendered separately with correct state */}
       {showAISummary   && <AISummaryModal     testimonials={testimonials} onClose={() => setShowAISummary(false)} />}
       {showHighlights  && <AIHighlightModal   testimonials={testimonials} onClose={() => setShowHighlights(false)} />}
       {showImprovement && <AIImprovementModal testimonials={testimonials} onClose={() => setShowImprovement(false)} />}
@@ -835,13 +966,11 @@ export default function Space() {
                 <Sparkles size={14} /> AI Summary
               </button>
 
-              {/* ✅ FIX: Correct handler setShowHighlights */}
               <button onClick={() => setShowHighlights(true)}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-teal-400/10 border border-teal-400/20 text-teal-400 hover:bg-teal-400/20 transition-all text-sm font-medium">
                 <Star size={14} fill="currentColor" /> Highlight Reel
               </button>
 
-              {/* ✅ NEW: Improvement Coach button */}
               <button onClick={() => setShowImprovement(true)}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-400 hover:bg-amber-400/20 transition-all text-sm font-medium">
                 <Zap size={14} /> Improvement Coach

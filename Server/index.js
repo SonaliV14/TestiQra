@@ -9,6 +9,7 @@ import FetchTestimonials from "./router/FetchTestimonials.js";
 import LikedTestimonialsRouter from "./router/Likedtestimonials.js";
 import editRouter from "./router/editspace.js";
 import AiRouter from "./router/AiRouter.js";
+import EmailRouter from "./router/EmailRouter.js";
 const app = express();
 
 app.use(cors());
@@ -22,6 +23,7 @@ app.use("/api/v1/fetchtestimonials", FetchTestimonials);
 app.use("/api/v1", LikedTestimonialsRouter);
 app.use("/api/v1/edit", editRouter);
 app.use("/api/v1/ai", AiRouter);  
+app.use('/api/v1/email', EmailRouter);
 
 // req and res (request and response) 
 app.get("/", (req, res) => {
