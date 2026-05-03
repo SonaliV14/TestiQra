@@ -5,12 +5,13 @@ import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import toast, { Toaster } from 'react-hot-toast';
 import {
   Sparkles, X, Search,
-  ThumbsUp, ThumbsDown, Star,
+  Star,
   Heart, BarChart2,
   MessageSquare, Copy, Check,
   RefreshCw, GripVertical, Edit3,
   ExternalLink,
-  ChevronDown, Zap, ArrowRight, Send, Mail
+  ChevronDown, Zap, ArrowRight, Send, Mail,
+  Wand2, Trophy, AlertTriangle, SlidersHorizontal
 } from 'lucide-react';
 
 const BACKEND_URL = "http://localhost:3001";
@@ -171,7 +172,7 @@ ${excerpts}`
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="p-4 bg-emerald-400/5 border border-emerald-400/15 rounded-xl">
                   <p className="text-emerald-400 text-[10px] uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <ThumbsUp size={11} /> Key Positives
+                    Key Positives
                   </p>
                   {summary.keyPositives.length === 0
                     ? <p className="text-gray-600 text-xs">None identified</p>
@@ -184,7 +185,7 @@ ${excerpts}`
                 </div>
                 <div className="p-4 bg-red-400/5 border border-red-400/15 rounded-xl">
                   <p className="text-red-400 text-[10px] uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <ThumbsDown size={11} /> Key Complaints
+                    Key Complaints
                   </p>
                   {summary.keyComplaints.length === 0
                     ? <p className="text-gray-600 text-xs">None identified</p>
@@ -209,147 +210,6 @@ ${excerpts}`
               <p className="text-gray-500 text-sm">No summary generated yet.</p>
               <button onClick={generateSummary}
                 className="mt-3 px-4 py-2 bg-cyan-400/10 border border-cyan-400/20 text-cyan-400 rounded-xl text-sm hover:bg-cyan-400/20 transition-all">
-                Try Again
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ─── AI Highlight Reel Modal ──────────────────────────────────────────────────
-const AIHighlightModal = ({ testimonials, onClose }) => {
-  const [highlights, setHighlights] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const generate = async () => {
-    if (!testimonials.length) { toast.error('No testimonials yet'); return; }
-    setLoading(true); setHighlights(null);
-    try {
-      const excerpts = testimonials.map((t, i) =>
-        `[id:${t.id}] Rating:${t.Rating}/5 — "${t.Content?.slice(0, 200)}"`
-      ).join('\n');
-
-      const res = await fetch(`${BACKEND_URL}/api/v1/ai`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') },
-        body: JSON.stringify({
-          prompt: `You are a conversion copywriter. From these testimonials pick the 3-5 BEST ones to feature on a website homepage. Prioritise: specificity, emotional impact, mentions of concrete results, and high star ratings.
-
-Return ONLY valid JSON:
-{
-  "picks": [
-    { "id": <testimonial id as number>, "reason": "one sentence why this one stands out" }
-  ]
-}
-
-Testimonials:
-${excerpts}`
-        })
-      });
-      const data = await res.json();
-      const cleaned = (data.result || '{}').replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(cleaned);
-      setHighlights(Array.isArray(parsed.picks) ? parsed.picks : []);
-    } catch (e) {
-      console.error(e);
-      toast.error('Failed to pick highlights');
-    } finally { setLoading(false); }
-  };
-
-  useEffect(() => { generate(); }, []);
-
-  const pickedTestimonials = highlights
-    ? highlights.map(h => ({
-        ...testimonials.find(t => t.id === h.id || t.id === String(h.id)),
-        reason: h.reason
-      })).filter(t => t.username)
-    : [];
-
-  const copyAll = () => {
-    const text = pickedTestimonials.map(t =>
-      `"${t.Content}"\n— ${t.username}\n(Why picked: ${t.reason})`
-    ).join('\n\n');
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0d1117] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between p-6 border-b border-white/8">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-teal-400/15 border border-teal-400/25 flex items-center justify-center">
-              <Star size={17} className="text-teal-400" fill="currentColor" />
-            </div>
-            <div>
-              <h2 className="text-white font-semibold text-base">AI Highlight Reel</h2>
-              <p className="text-gray-500 text-xs">Best testimonials to feature on your website</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={generate} disabled={loading}
-              className="p-2 rounded-xl bg-white/4 hover:bg-white/8 text-gray-500 hover:text-white transition-all disabled:opacity-40">
-              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            </button>
-            <button onClick={onClose}
-              className="p-2 rounded-xl bg-white/4 hover:bg-white/8 text-gray-500 hover:text-white transition-all">
-              <X size={15} />
-            </button>
-          </div>
-        </div>
-
-        <div className="p-6 space-y-4">
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <div className="w-10 h-10 rounded-full border-2 border-teal-400 border-t-transparent animate-spin" />
-              <p className="text-gray-500 text-sm">Picking your best testimonials…</p>
-            </div>
-          )}
-
-          {!loading && pickedTestimonials.length > 0 && (
-            <>
-              <p className="text-gray-500 text-xs">
-                AI selected <span className="text-white font-medium">{pickedTestimonials.length}</span> standout testimonials
-              </p>
-              <div className="space-y-3">
-                {pickedTestimonials.map((t, i) => (
-                  <div key={t.id} className="p-4 bg-white/3 border border-teal-400/15 rounded-xl">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="w-5 h-5 rounded-full bg-teal-400/20 flex items-center justify-center text-teal-400 text-xs font-bold shrink-0">
-                        {i + 1}
-                      </span>
-                      <img
-                        src={t.UserImageURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(t.username)}&backgroundColor=0d1117&textColor=2dd4bf`}
-                        alt="" className="w-6 h-6 rounded-lg object-cover border border-white/10"
-                      />
-                      <span className="text-white text-sm font-medium">{t.username}</span>
-                      <StarRating value={t.Rating} />
-                    </div>
-                    <p className="text-gray-300 text-sm leading-relaxed mb-2 line-clamp-3">"{t.Content}"</p>
-                    <div className="flex items-start gap-1.5 p-2 bg-teal-400/5 border border-teal-400/10 rounded-lg">
-                      <Sparkles size={11} className="text-teal-400 mt-0.5 shrink-0" />
-                      <p className="text-teal-300 text-xs">{t.reason}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button onClick={copyAll}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-teal-400 hover:bg-teal-300 text-black rounded-xl font-semibold text-sm transition-all">
-                {copied ? <><Check size={14} /> Copied!</> : <><Copy size={14} /> Copy All Highlights</>}
-              </button>
-            </>
-          )}
-
-          {!loading && pickedTestimonials.length === 0 && highlights !== null && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-sm">Couldn't pick highlights. Try regenerating.</p>
-              <button onClick={generate}
-                className="mt-3 px-4 py-2 bg-teal-400/10 border border-teal-400/20 text-teal-400 rounded-xl text-sm">
                 Try Again
               </button>
             </div>
@@ -523,6 +383,321 @@ ${excerpts}`
   );
 };
 
+// ─── AI Testimonial Picker Modal ──────────────────────────────────────────────
+const AIPickerModal = ({ testimonials, onClose, onBulkLike }) => {
+  const [count, setCount] = useState(5);
+  const [mode, setMode] = useState('best'); // 'best' | 'worst'
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState(null);
+  const [loved, setLoved] = useState(new Set());
+  const [bulkApplied, setBulkApplied] = useState(false);
+
+  const COUNT_OPTIONS = [3, 5, 10, 15, 20];
+
+  const handleGenerate = async () => {
+    if (!testimonials.length) {
+      toast.error('No testimonials to analyse yet.');
+      return;
+    }
+    setLoading(true);
+    setResults(null);
+    setLoved(new Set());
+    setBulkApplied(false);
+
+    try {
+      const textTestimonials = testimonials.filter(t => t.isTextContent && t.Content);
+      const pool = textTestimonials.length ? textTestimonials : testimonials;
+
+      const excerpts = pool.map((t, i) =>
+        `[index:${i}] id:${t.id} | Rating:${t.Rating}/5 | Author:${t.username} | "${t.Content?.slice(0, 300) || 'No text content'}"`
+      ).join('\n');
+
+      const actualCount = Math.min(count, pool.length);
+
+      const res = await fetch(`${BACKEND_URL}/api/v1/ai`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + localStorage.getItem('token') },
+        body: JSON.stringify({
+          prompt: `You are a testimonial curator. From these testimonials, select the ${actualCount} ${
+            mode === 'best'
+              ? 'BEST ones (most positive, specific, results-driven, emotionally compelling, high star ratings)'
+              : 'WORST ones (most negative, vague, critical, or low-rated)'
+          }.
+
+Return ONLY valid JSON with no markdown or backticks:
+{
+  "picks": [
+    { "index": <integer index from the list>, "id": <testimonial id>, "reason": "one sentence why" }
+  ],
+  "reasoning": "1-2 sentences explaining your overall selection strategy"
+}
+
+Testimonials:
+${excerpts}`
+        })
+      });
+
+      const data = await res.json();
+      const cleaned = (data.result || '{}').replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+
+      const picks = (parsed.picks || [])
+        .map(p => {
+          const byIndex = pool[p.index];
+          const byId    = pool.find(t => String(t.id) === String(p.id));
+          const testi   = byIndex || byId;
+          return testi ? { ...testi, _reason: p.reason } : null;
+        })
+        .filter(Boolean)
+        .filter((t, i, arr) => arr.findIndex(x => x.id === t.id) === i);
+
+      setResults({ picks, reasoning: parsed.reasoning || '' });
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to pick testimonials. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── Toggle love for a single testimonial ──────────────────────────────────
+  const toggleLove = (id) => {
+    setLoved(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  };
+
+  // ── Love all picks at once ────────────────────────────────────────────────
+  const loveAll = () => {
+    if (!results) return;
+    setLoved(new Set(results.picks.map(t => t.id)));
+  };
+
+  // ── Apply loved picks to backend ──────────────────────────────────────────
+  const handleBulkLove = async () => {
+    if (!results) return;
+    const toApprove = results.picks.filter(t => loved.has(t.id));
+    if (toApprove.length === 0) {
+      toast.error('Heart at least one testimonial first.');
+      return;
+    }
+    try {
+      await onBulkLike(toApprove.map(t => t.id));
+      setBulkApplied(true);
+      toast.success(`${toApprove.length} testimonials loved!`);
+    } catch {
+      toast.error('Some updates failed.');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[#0d1117] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between p-6 border-b border-white/8">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-violet-500/15 border border-violet-500/25 flex items-center justify-center">
+              <Wand2 size={17} className="text-violet-400" />
+            </div>
+            <div>
+              <h2 className="text-white font-semibold text-base">AI Testimonial Picker</h2>
+              <p className="text-gray-500 text-xs">
+                Let AI surface the {mode === 'best' ? 'best' : 'worst'} from {testimonials.length} testimonials
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {results && (
+              <button onClick={handleGenerate} disabled={loading}
+                className="p-2 rounded-xl bg-white/4 hover:bg-white/8 text-gray-500 hover:text-white transition-all disabled:opacity-40"
+                title="Regenerate">
+                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              </button>
+            )}
+            <button onClick={onClose}
+              className="p-2 rounded-xl bg-white/4 hover:bg-white/8 text-gray-500 hover:text-white transition-all">
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* ── Controls ── */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Count */}
+            <div>
+              <label className="text-gray-500 text-[10px] uppercase tracking-widest block mb-2 flex items-center gap-1">
+                <SlidersHorizontal size={10} /> Number to pick
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {COUNT_OPTIONS.map(n => (
+                  <button key={n} type="button" onClick={() => setCount(n)}
+                    className={`w-9 h-9 rounded-lg text-xs font-bold transition-all border ${count === n
+                      ? 'bg-violet-500/20 border-violet-500/40 text-violet-400'
+                      : 'bg-white/4 border-white/8 text-gray-500 hover:border-gray-600 hover:text-white'}`}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Mode */}
+            <div>
+              <label className="text-gray-500 text-[10px] uppercase tracking-widest block mb-2">Pick mode</label>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setMode('best')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-all ${mode === 'best'
+                    ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400'
+                    : 'bg-white/4 border-white/8 text-gray-500 hover:text-white'}`}>
+                  <Trophy size={12} /> Best
+                </button>
+                <button type="button" onClick={() => setMode('worst')}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold border transition-all ${mode === 'worst'
+                    ? 'bg-red-500/15 border-red-500/35 text-red-400'
+                    : 'bg-white/4 border-white/8 text-gray-500 hover:text-white'}`}>
+                  <AlertTriangle size={12} /> Worst
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Generate button ── */}
+          <button onClick={handleGenerate} disabled={loading}
+            className="w-full flex items-center justify-center gap-2 py-3.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all text-sm shadow-lg shadow-violet-500/20">
+            {loading
+              ? <><RefreshCw size={14} className="animate-spin" /> AI is picking {Math.min(count, testimonials.length)} {mode} testimonials…</>
+              : <><Wand2 size={14} /> Pick {count} {mode === 'best' ? '🏆 Best' : '⚠️ Worst'} Testimonials</>}
+          </button>
+
+          {/* ── Results ── */}
+          {results && !loading && (
+            <div className="space-y-3">
+              {/* AI reasoning banner */}
+              {results.reasoning && (
+                <div className="flex items-start gap-2.5 p-3 bg-violet-500/6 border border-violet-500/15 rounded-xl">
+                  <Sparkles size={12} className="text-violet-400 shrink-0 mt-0.5" />
+                  <p className="text-gray-400 text-xs leading-relaxed">{results.reasoning}</p>
+                </div>
+              )}
+
+              {/* Summary counts */}
+              <div className="flex items-center justify-between text-xs px-0.5">
+                <span className="text-gray-600">
+                  {results.picks.length} testimonial{results.picks.length !== 1 ? 's' : ''} picked
+                </span>
+                <span className="text-rose-400 font-medium flex items-center gap-1">
+                  <Heart size={11} fill="currentColor" /> {loved.size} loved
+                </span>
+              </div>
+
+              {/* Cards */}
+              {results.picks.length === 0 ? (
+                <div className="text-center py-10">
+                  <p className="text-gray-500 text-sm">No matches found. Try a different count or mode.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1"
+                  style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.08) transparent' }}>
+                  {results.picks.map((t, idx) => {
+                    const isLoved = loved.has(t.id);
+                    return (
+                      <div key={t.id}
+                        className={`relative p-4 rounded-xl border transition-all ${
+                          isLoved
+                            ? 'bg-rose-500/5 border-rose-500/25'
+                            : 'bg-white/2 border-white/7 hover:border-white/12'
+                        }`}>
+                        {/* Rank badge */}
+                        <span className="absolute top-3.5 left-4 w-5 h-5 rounded-full bg-violet-500/20 flex items-center justify-center text-violet-400 text-[10px] font-bold shrink-0">
+                          {idx + 1}
+                        </span>
+
+                        <div className="pl-7">
+                          {/* Author row */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2.5">
+                              <img
+                                src={t.UserImageURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(t.username)}&backgroundColor=0d1117&textColor=8b5cf6`}
+                                alt=""
+                                className="w-6 h-6 rounded-lg object-cover border border-white/10"
+                              />
+                              <span className="text-white text-sm font-medium">{t.username}</span>
+                              <StarRating value={t.Rating} />
+                            </div>
+                            {/* Heart / Love button */}
+                            <button
+                              type="button"
+                              onClick={() => toggleLove(t.id)}
+                              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all border ${
+                                isLoved
+                                  ? 'bg-rose-500/20 border-rose-500/40 text-rose-400 shadow-sm shadow-rose-500/20'
+                                  : 'bg-white/3 border-white/8 text-gray-600 hover:text-rose-400 hover:border-rose-500/30 hover:bg-rose-500/8'
+                              }`}
+                              title={isLoved ? 'Remove love' : 'Love this testimonial'}
+                            >
+                              <Heart size={14} fill={isLoved ? 'currentColor' : 'none'} />
+                            </button>
+                          </div>
+
+                          {/* Content */}
+                          <p className="text-gray-300 text-xs leading-relaxed line-clamp-3 mb-2.5">
+                            "{t.Content || 'No text content'}"
+                          </p>
+
+                          {/* AI reason */}
+                          {t._reason && (
+                            <div className="flex items-start gap-1.5 p-2 bg-violet-500/5 border border-violet-500/12 rounded-lg">
+                              <Sparkles size={10} className="text-violet-400 mt-0.5 shrink-0" />
+                              <p className="text-violet-300 text-[11px] leading-relaxed">{t._reason}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Bulk actions */}
+              {results.picks.length > 0 && (
+                !bulkApplied ? (
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={loveAll}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold border border-rose-500/25 text-rose-400 bg-rose-500/5 hover:bg-rose-500/10 rounded-xl transition-all">
+                      <Heart size={12} fill="currentColor" /> Love All
+                    </button>
+                    <button onClick={handleBulkLove}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold bg-rose-500 hover:bg-rose-400 text-white rounded-xl transition-all shadow-md shadow-rose-500/20">
+                      <Heart size={12} fill="currentColor" /> Apply Love ({loved.size})
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 p-3 bg-rose-500/6 border border-rose-500/15 rounded-xl">
+                    <Heart size={14} className="text-rose-400 shrink-0" fill="currentColor" />
+                    <span className="text-rose-400 text-xs font-medium">
+                      Love applied — check your testimonials list! ❤️
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+
+          {/* Idle hint */}
+          {!results && !loading && (
+            <p className="text-gray-700 text-xs text-center pb-1">
+              Configure your options above and click "Pick Testimonials" to start.
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Email Reply Modal ────────────────────────────────────────────────────────
 const EmailReplyModal = ({ testimonial, initialReply, onClose }) => {
   const [replyText, setReplyText] = useState(initialReply || '');
@@ -570,7 +745,6 @@ const EmailReplyModal = ({ testimonial, initialReply, onClose }) => {
         </div>
 
         <div className="p-5 space-y-4">
-          {/* Recipient info */}
           <div className="flex items-center gap-3 p-3 bg-white/3 border border-white/6 rounded-xl">
             <img
               src={testimonial.UserImageURL || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(testimonial.username)}&backgroundColor=0d1117&textColor=8b5cf6`}
@@ -583,32 +757,22 @@ const EmailReplyModal = ({ testimonial, initialReply, onClose }) => {
             <StarRating value={testimonial.Rating} />
           </div>
 
-          {/* Subject */}
           <div>
             <label className="text-gray-500 text-[10px] uppercase tracking-widest block mb-1.5">Subject</label>
-            <input
-              value={subject}
-              onChange={e => setSubject(e.target.value)}
-              className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500/60 transition-colors"
-            />
+            <input value={subject} onChange={e => setSubject(e.target.value)}
+              className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-2.5 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500/60 transition-colors" />
           </div>
 
-          {/* Reply body */}
           <div>
             <label className="text-gray-500 text-[10px] uppercase tracking-widest block mb-1.5">
               Your reply <span className="text-violet-400 normal-case">(editable)</span>
             </label>
-            <textarea
-              value={replyText}
-              onChange={e => setReplyText(e.target.value)}
-              rows={6}
+            <textarea value={replyText} onChange={e => setReplyText(e.target.value)} rows={6}
               placeholder="Write your reply here…"
-              className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500/60 transition-colors resize-none leading-relaxed"
-            />
+              className="w-full bg-gray-800/60 border border-gray-700/50 rounded-xl px-4 py-3 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-violet-500/60 transition-colors resize-none leading-relaxed" />
             <p className="text-gray-700 text-xs mt-1">{replyText.length} characters</p>
           </div>
 
-          {/* Original testimonial preview */}
           <div className="p-3 bg-white/2 border border-white/5 rounded-xl">
             <p className="text-gray-600 text-[10px] uppercase tracking-widest mb-1.5">Original testimonial</p>
             <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">"{testimonial.Content}"</p>
@@ -627,11 +791,9 @@ const EmailReplyModal = ({ testimonial, initialReply, onClose }) => {
                 : sending
                   ? 'bg-violet-600/30 text-violet-400/50 cursor-not-allowed'
                   : 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20'}`}>
-            {sent
-              ? <><Check size={14} /> Sent!</>
-              : sending
-                ? <><RefreshCw size={14} className="animate-spin" /> Sending…</>
-                : <><Send size={14} /> Send Reply</>}
+            {sent ? <><Check size={14} /> Sent!</>
+              : sending ? <><RefreshCw size={14} className="animate-spin" /> Sending…</>
+              : <><Send size={14} /> Send Reply</>}
           </button>
         </div>
       </div>
@@ -691,7 +853,6 @@ Return ONLY valid JSON:
         ? 'border-rose-500/30 shadow-rose-500/5 shadow-lg'
         : 'border-white/7 hover:border-white/12'}`}>
 
-      {/* Email Reply Modal — rendered inside the card so it has access to testimonial */}
       {showEmailModal && (
         <EmailReplyModal
           testimonial={testimonial}
@@ -744,12 +905,9 @@ Return ONLY valid JSON:
         <img src={testimonial.imageURL} alt="" className="w-full rounded-xl mt-3 max-h-48 object-cover border border-white/8" />
       )}
 
-      {/* ── AI Reply Section ── */}
       {testimonial.isTextContent && (
         <div className="mt-3 space-y-2">
-          <button
-            onClick={generateReply}
-            disabled={replyLoading}
+          <button onClick={generateReply} disabled={replyLoading}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 rounded-lg text-xs font-medium transition-all disabled:opacity-50">
             {replyLoading
               ? <><RefreshCw size={11} className="animate-spin" /> Drafting reply…</>
@@ -770,7 +928,6 @@ Return ONLY valid JSON:
                         className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors px-2.5 py-1.5 bg-purple-500/10 rounded-lg border border-purple-500/20 hover:bg-purple-500/20">
                         {replyCopied ? <><Check size={11} /> Copied!</> : <><Copy size={11} /> Copy</>}
                       </button>
-                      {/* ── NEW: Send reply button → opens EmailReplyModal ── */}
                       <button onClick={() => setShowEmailModal(true)}
                         className="flex items-center gap-1.5 text-xs text-violet-300 hover:text-white transition-colors px-2.5 py-1.5 bg-violet-600/15 rounded-lg border border-violet-500/25 hover:bg-violet-600/25">
                         <Send size={11} /> Send to reviewer
@@ -802,9 +959,9 @@ export default function Space() {
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [isReordering, setIsReordering] = useState(false);
-  const [showAISummary, setShowAISummary] = useState(false);
-  const [showHighlights, setShowHighlights] = useState(false);
+  const [showAISummary, setShowAISummary]     = useState(false);
   const [showImprovement, setShowImprovement] = useState(false);
+  const [showAIPicker, setShowAIPicker]       = useState(false);
   const [stats, setStats] = useState({ total: 0, liked: 0, avgRating: 0, video: 0 });
   const [copied, setCopied] = useState(false);
 
@@ -851,7 +1008,7 @@ export default function Space() {
     let list = [...testimonials];
     if (filter === 'liked') list = list.filter(t => t.liked);
     if (filter === 'video') list = list.filter(t => !t.isTextContent);
-    if (filter === 'text') list = list.filter(t => t.isTextContent);
+    if (filter === 'text')  list = list.filter(t => t.isTextContent);
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(t =>
@@ -865,8 +1022,26 @@ export default function Space() {
 
   const handleLike = async (id, isLiked) => {
     setTestimonials(prev => prev.map(t => t.id === id ? { ...t, liked: !t.liked } : t));
-    await axios.post(`${BACKEND_URL}/api/v1/liked`, { testimonialid: id, isLiked: !isLiked },
-      { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } });
+    await axios.post(`${BACKEND_URL}/api/v1/liked`,
+      { testimonialid: id, isLiked: !isLiked },
+      { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } }
+    );
+  };
+
+  // ── Bulk like handler for AI Picker ────────────────────────────────────────
+  const handleBulkLike = async (ids) => {
+    setTestimonials(prev =>
+      prev.map(t => ids.includes(t.id) ? { ...t, liked: true } : t)
+    );
+    await Promise.all(
+      ids.map(id =>
+        axios.post(`${BACKEND_URL}/api/v1/liked`,
+          { testimonialid: id, isLiked: true },
+          { headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } }
+        ).catch(() => null)
+      )
+    );
+    fetchTestimonials();
   };
 
   const onDragEnd = (result) => {
@@ -893,9 +1068,16 @@ export default function Space() {
         style: { background: '#111318', color: '#fff', border: '1px solid rgba(255,255,255,.1)', borderRadius: '14px' }
       }} />
 
+      {/* ── Modals ── */}
       {showAISummary   && <AISummaryModal     testimonials={testimonials} onClose={() => setShowAISummary(false)} />}
-      {showHighlights  && <AIHighlightModal   testimonials={testimonials} onClose={() => setShowHighlights(false)} />}
       {showImprovement && <AIImprovementModal testimonials={testimonials} onClose={() => setShowImprovement(false)} />}
+      {showAIPicker    && (
+        <AIPickerModal
+          testimonials={testimonials}
+          onClose={() => setShowAIPicker(false)}
+          onBulkLike={handleBulkLike}
+        />
+      )}
 
       {/* ── Top Bar ── */}
       <div className="border-b border-white/6 bg-[#080a0f]/90 backdrop-blur sticky top-0 z-30">
@@ -926,6 +1108,10 @@ export default function Space() {
               <span className="truncate max-w-[180px]">{shareableUrl.replace('http://', '')}</span>
               {copied ? <Check size={12} className="text-cyan-400 shrink-0" /> : <Copy size={12} className="shrink-0" />}
             </button>
+            <button onClick={() => setShowAIPicker(true)}
+              className="flex items-center gap-2 px-3 py-2 bg-violet-500/10 border border-violet-500/20 hover:bg-violet-500/20 text-violet-400 rounded-xl transition-all text-sm font-medium">
+              <Wand2 size={14} /> AI Picker
+            </button>
             <button onClick={() => setShowAISummary(true)}
               className="flex items-center gap-2 px-3 py-2 bg-cyan-400/10 border border-cyan-400/20 hover:bg-cyan-400/20 text-cyan-400 rounded-xl transition-all text-sm font-medium">
               <Sparkles size={14} /> AI Summary
@@ -947,7 +1133,7 @@ export default function Space() {
               <p className="text-gray-600 text-[10px] uppercase tracking-widest font-semibold">At a Glance</p>
               {[
                 { label: 'Total',      value: stats.total,           color: 'text-white' },
-                { label: 'Liked',      value: stats.liked,           color: 'text-rose-400' },
+                { label: 'Loved',      value: stats.liked,           color: 'text-rose-400' },
                 { label: 'Avg Rating', value: `${stats.avgRating}★`, color: 'text-amber-400' },
                 { label: 'Videos',     value: stats.video,           color: 'text-red-400' },
               ].map(s => (
@@ -966,14 +1152,15 @@ export default function Space() {
                 <Sparkles size={14} /> AI Summary
               </button>
 
-              <button onClick={() => setShowHighlights(true)}
-                className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-teal-400/10 border border-teal-400/20 text-teal-400 hover:bg-teal-400/20 transition-all text-sm font-medium">
-                <Star size={14} fill="currentColor" /> Highlight Reel
-              </button>
-
               <button onClick={() => setShowImprovement(true)}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-amber-400/10 border border-amber-400/20 text-amber-400 hover:bg-amber-400/20 transition-all text-sm font-medium">
                 <Zap size={14} /> Improvement Coach
+              </button>
+
+              <button onClick={() => setShowAIPicker(true)}
+                className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-violet-500/10 border border-violet-500/20 text-violet-400 hover:bg-violet-500/20 transition-all text-sm font-medium">
+                <Wand2 size={14} /> AI Picker
+                <span className="ml-auto text-[9px] font-bold bg-violet-500/25 text-violet-300 px-1.5 py-0.5 rounded-full">NEW</span>
               </button>
 
               <button onClick={() => setIsReordering(r => !r)}

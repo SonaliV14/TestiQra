@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Star, Zap, Shield, BarChart2, MessageSquare, Video, Sparkles } from 'lucide-react';
+import { ArrowRight, Star, Zap, Shield, BarChart2, MessageSquare, Video, Sparkles, Code2, Eye, Copy, Check } from 'lucide-react';
 
 const FEATURES = [
   {
@@ -34,6 +34,237 @@ const TESTIMONIALS = [
   { name: 'Marcus T.', role: 'Marketing Director', text: 'The wall of love embed is gorgeous. Our conversion rate jumped 18% after adding it to our landing page.', rating: 5, avatar: 'MT' },
   { name: 'Priya R.', role: 'SaaS Founder', text: 'Incredibly easy to set up. The video testimonials feature blew our customers away.', rating: 5, avatar: 'PR' },
 ];
+
+// ── Wall of Love Preview Component ──────────────────────────────────────────
+const WallOfLovePreview = () => {
+  const [embedCode, setEmbedCode] = useState('');
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const iframeRef = useRef(null);
+
+  const PLACEHOLDER = `<!-- Paste your TestiQra embed code here -->
+<div id="testiqra-wall" data-space="your-space-name"></div>
+<script src="https://testiqra.io/embed.js" async></script>`;
+
+  const extractSrc = (code) => {
+    // Try to find an iframe src
+    const iframeSrcMatch = code.match(/<iframe[^>]+src=["']([^"']+)["']/i);
+    if (iframeSrcMatch) return { type: 'iframe', src: iframeSrcMatch[1] };
+
+    // Try to find a script + div combo (typical wall embed)
+    const dataSpaceMatch = code.match(/data-space=["']([^"']+)["']/i);
+    if (dataSpaceMatch) return { type: 'widget', space: dataSpaceMatch[1] };
+
+    // Try raw URL
+    try {
+      const url = new URL(code.trim());
+      return { type: 'iframe', src: url.href };
+    } catch {}
+
+    return null;
+  };
+
+  const handlePreview = () => {
+    setError('');
+    if (!embedCode.trim() || embedCode.trim() === PLACEHOLDER) {
+      setError('Please paste your embed code first.');
+      return;
+    }
+
+    const parsed = extractSrc(embedCode);
+    if (!parsed) {
+      setError('Could not parse embed code. Try pasting an iframe or script embed.');
+      return;
+    }
+
+    if (parsed.type === 'iframe') {
+      setPreviewUrl(parsed.src);
+    } else {
+      setError(`Widget embed detected for space "${parsed.space}". Live preview uses iframe embeds. Copy your iframe embed from the dashboard.`);
+    }
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(embedCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleClear = () => {
+    setEmbedCode('');
+    setPreviewUrl('');
+    setError('');
+  };
+
+  return (
+    <section className="py-24 px-6 bg-gray-950">
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-sm mb-6 font-medium">
+            <Eye size={14} /> Live Wall Preview
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            See your Wall of Love <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">before you ship</span>
+          </h2>
+          <p className="text-gray-400 text-lg max-w-xl mx-auto">
+            Paste your embed code below and instantly preview how your testimonial wall will look on your site.
+          </p>
+        </div>
+
+        {/* Main card */}
+        <div className="bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden shadow-2xl">
+          {/* Top bar */}
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900/80">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                <Code2 size={13} className="text-emerald-400" />
+              </div>
+              <span className="text-white font-semibold text-sm">Embed Code Preview</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {embedCode && (
+                <>
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 rounded-lg text-xs transition-all"
+                  >
+                    {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                  <button
+                    onClick={handleClear}
+                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 rounded-lg text-xs transition-all"
+                  >
+                    Clear
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-800">
+            {/* Left: Code input */}
+            <div className="p-6 flex flex-col gap-4">
+              <div>
+                <label className="text-gray-400 text-xs uppercase tracking-wider mb-2 block">Your Embed Code</label>
+                <div className="relative">
+                  <textarea
+                    value={embedCode}
+                    onChange={e => { setEmbedCode(e.target.value); setError(''); setPreviewUrl(''); }}
+                    placeholder={PLACEHOLDER}
+                    rows={10}
+                    spellCheck={false}
+                    className="w-full bg-gray-950 border border-gray-700/60 hover:border-gray-600 focus:border-emerald-500/50 rounded-2xl px-4 py-4 text-emerald-300 text-xs font-mono placeholder-gray-700 focus:outline-none transition-all resize-none leading-relaxed"
+                  />
+                  {/* Syntax highlight hint */}
+                  {!embedCode && (
+                    <div className="absolute bottom-4 right-4 flex items-center gap-1.5 text-gray-700 text-xs pointer-events-none">
+                      <Code2 size={11} />
+                      <span>HTML / iframe</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {error && (
+                <div className="flex items-start gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                  <span className="text-red-400 text-xs leading-relaxed">{error}</span>
+                </div>
+              )}
+
+              <button
+                onClick={handlePreview}
+                disabled={!embedCode.trim()}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold rounded-xl transition-all text-sm shadow-lg shadow-emerald-500/20"
+              >
+                <Eye size={15} />
+                Preview Wall
+              </button>
+
+              {/* Tips */}
+              <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 space-y-2">
+                <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">How to get your embed code</p>
+                {[
+                  'Go to your TestiQra Dashboard',
+                  'Open your Space → click "Embed"',
+                  'Copy the iframe or script snippet',
+                  'Paste it in the box above',
+                ].map((tip, i) => (
+                  <div key={i} className="flex items-center gap-2.5">
+                    <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold flex items-center justify-center shrink-0">{i + 1}</span>
+                    <span className="text-gray-500 text-xs">{tip}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Preview pane */}
+            <div className="p-6 flex flex-col">
+              <label className="text-gray-400 text-xs uppercase tracking-wider mb-3 block flex items-center gap-1.5">
+                <Eye size={11} /> Live Preview
+              </label>
+
+              <div className="flex-1 bg-gray-950 border border-gray-700/50 rounded-2xl overflow-hidden relative min-h-[360px]">
+                {/* Browser chrome */}
+                <div className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-900 border-b border-gray-700/50">
+                  <div className="w-2.5 h-2.5 rounded-full bg-red-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500/60" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/60" />
+                  <div className="flex-1 mx-3 bg-gray-800 rounded-md px-3 py-1 text-gray-600 text-xs truncate">
+                    {previewUrl || 'your-wall-preview'}
+                  </div>
+                </div>
+
+                {previewUrl ? (
+                  <iframe
+                    ref={iframeRef}
+                    src={previewUrl}
+                    title="Wall of Love Preview"
+                    className="w-full h-full min-h-[320px] border-0"
+                    sandbox="allow-scripts allow-same-origin allow-popups"
+                  />
+                ) : (
+                  /* Empty state */
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+                    {/* Simulated wall skeleton */}
+                    <div className="w-full max-w-sm space-y-3 mb-6 opacity-30">
+                      {[...Array(3)].map((_, row) => (
+                        <div key={row} className="grid grid-cols-2 gap-3">
+                          {[...Array(2)].map((_, col) => (
+                            <div key={col} className={`bg-gray-800 rounded-xl p-3 ${col === 1 && row === 1 ? 'col-span-2' : ''}`}>
+                              <div className="flex gap-0.5 mb-2">
+                                {[...Array(5)].map((_, s) => (
+                                  <div key={s} className="w-2 h-2 rounded-full bg-amber-500/50" />
+                                ))}
+                              </div>
+                              <div className="space-y-1.5">
+                                <div className="h-1.5 bg-gray-700 rounded-full w-full" />
+                                <div className="h-1.5 bg-gray-700 rounded-full w-4/5" />
+                                <div className="h-1.5 bg-gray-700 rounded-full w-3/5" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-3">
+                      <Eye size={20} className="text-emerald-400" />
+                    </div>
+                    <p className="text-gray-500 text-sm font-medium">Your wall will appear here</p>
+                    <p className="text-gray-700 text-xs mt-1">Paste your embed code and click Preview</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
 
 export default function Landingpage() {
   const navigate = useNavigate();
@@ -200,31 +431,11 @@ export default function Landingpage() {
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="py-24 px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="relative">
-            <div className="absolute inset-0 bg-violet-600/10 rounded-3xl blur-3xl" />
-            <div className="relative bg-gray-900 border border-gray-700 rounded-3xl p-12">
-              <div className="w-14 h-14 rounded-2xl bg-violet-600 flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-violet-500/30">
-                <Sparkles size={28} />
-              </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Ready to collect social proof that converts?
-              </h2>
-              <p className="text-gray-400 mb-8 text-lg">Join hundreds of businesses that trust TestiQra</p>
-              <button onClick={() => navigate('/signup')}
-                className="group inline-flex items-center gap-2 px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white rounded-2xl font-semibold text-base transition-all shadow-2xl shadow-violet-500/25">
-                Get started for free
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ── Wall of Love Preview */}
+      <WallOfLovePreview />
 
       <footer className="border-t border-gray-800 py-8 px-6 text-center text-gray-600 text-sm">
-        <p>© 2024 TestiQra. Built with ❤️</p>
+        <p>© 2024 TestiQra. </p>
       </footer>
     </div>
   );
