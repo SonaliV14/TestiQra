@@ -10,7 +10,7 @@ import {
 import ThemeToggle from './ThemeToggle';
 import { useTheme } from '../context/ThemeContext';
 
-const BACKEND_URL = 'http://localhost:3001';
+import { BACKEND_URL } from '../utils/DB';
 
 export default function Dashboard() {
   const navigate = useNavigate();

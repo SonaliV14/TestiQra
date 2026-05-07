@@ -1,6 +1,2 @@
-// Backend API server
-export const BACKEND_URL = "http://localhost:3001";
-
-// Frontend dev server — used for shareable customer-facing links
-// Change this to your production domain when deploying, e.g. "https://testiqra.com"
-export const FRONTEND_URL = "http://localhost:5173";
+export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3001";
+export const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL || "http://localhost:5173";

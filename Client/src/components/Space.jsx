@@ -10,8 +10,7 @@ import {
   AlertTriangle, SlidersHorizontal
 } from 'lucide-react';
 
-const BACKEND_URL = "http://localhost:3001";
-const FRONTEND_URL = "http://localhost:5173";
+import { BACKEND_URL, FRONTEND_URL } from '../utils/DB';
 
 // ─── Star Rating ─────────────────────────────────────────────────────────────
 const StarRating = ({ value }) => (
