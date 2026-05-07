@@ -17,7 +17,7 @@ const uploadToCloudinary = async (file, type = 'image') => {
   data.append('cloud_name', 'dmxnc8pbu');
   const res = await fetch(`https://api.cloudinary.com/v1_1/dmxnc8pbu/${type}/upload`, { method: 'POST', body: data });
   const json = await res.json();
-  return json.url || json.secure_url;
+  return json.secure_url || json.url;
 };
 
 const BUSINESS_TYPES = [

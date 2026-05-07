@@ -20,7 +20,7 @@ const uploadToCloudinary = async (file, type = 'image') => {
     { method: 'POST', body: fd }
   );
   const json = await res.json();
-  return json.url || json.secure_url;
+  return json.secure_url || json.url;
 };
 
 // ─── Star picker ─────────────────────────────────────────────────────────────
