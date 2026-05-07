@@ -63,3 +63,4 @@ model Testimonial {
   liked     Boolean @default(false)
 
 }
+

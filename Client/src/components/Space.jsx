@@ -1120,6 +1120,7 @@ export default function Space() {
               className="flex items-center gap-2 px-3 py-2 bg-white/4 border border-white/8 hover:bg-white/8 text-gray-400 hover:text-white rounded-xl transition-all text-sm">
               <Edit3 size={14} /> Edit
             </button>
+            
           </div>
         </div>
       </div>

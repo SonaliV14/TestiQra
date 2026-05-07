@@ -37,7 +37,7 @@ const StarPicker = ({ value, onChange }) => (
 
 // ─── Video Recorder Component ─────────────────────────────────────────────────
 const VideoRecorder = ({ onVideoReady, onRemove, existingVideoUrl, maxDuration = 120 }) => {
-  const [mode, setMode] = useState('idle'); // idle | options | countdown | recording | preview
+  const [mode, setMode] = useState('idle');
   const [countdown, setCountdown] = useState(3);
   const [elapsed, setElapsed] = useState(0);
   const [videoBlob, setVideoBlob] = useState(null);
@@ -282,12 +282,18 @@ const VideoRecorder = ({ onVideoReady, onRemove, existingVideoUrl, maxDuration =
 // ─── Unified Testimonial Form ─────────────────────────────────────────────────
 const TestimonialForm = ({ spaceinfo, spacename, onClose, onSuccess }) => {
   const [form, setForm] = useState({
-    username: '', email: '', content: '', imageURL: '', UserImageURL: '', rating: 5, videoUrl: ''
+    username: '',
+    email: '',
+    content: '',
+    imageURL: '',
+    UserImageURL: '',
+    rating: 5,
+    videoUrl: '',
+    _gotcha: '',   // ← honeypot field, never shown to real users
   });
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [agreed, setAgreed] = useState(true);
-  const [activeSection, setActiveSection] = useState('text'); // text | video
   const imageRef = useRef(null);
   const avatarRef = useRef(null);
 
@@ -307,6 +313,7 @@ const TestimonialForm = ({ spaceinfo, spacename, onClose, onSuccess }) => {
     if (!form.email.trim()) { toast.error('Email is required'); return; }
     if (!form.content.trim() && !form.videoUrl) { toast.error('Please write your testimonial or add a video'); return; }
     if (!agreed) { toast.error('Please accept the permission checkbox'); return; }
+
     setSubmitting(true);
     try {
       await axios.post(
@@ -322,14 +329,18 @@ const TestimonialForm = ({ spaceinfo, spacename, onClose, onSuccess }) => {
           },
           rating: form.rating,
           videoUrl: form.videoUrl || null,
+          _gotcha: form._gotcha || '',  // ← sent to backend, checked there
         },
-        { params: { spacename }, headers: { Authorization: 'Bearer ' + localStorage.getItem('token') } }
+        { params: { spacename } }       // ← no auth header, visitors have no token
       );
       toast.success('Testimonial submitted — thank you!');
       setTimeout(() => { onSuccess(); onClose(); }, 800);
     } catch (err) {
-      toast.error(err?.response?.data?.error || 'Submission failed, please try again');
-    } finally { setSubmitting(false); }
+      const msg = err?.response?.data?.message || 'Submission failed, please try again';
+      toast.error(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -431,13 +442,22 @@ const TestimonialForm = ({ spaceinfo, spacename, onClose, onSuccess }) => {
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-[#111318] border border-white/8 rounded-xl px-3 py-2.5 focus-within:border-violet-400/30 transition-all">
                 <label className="block text-[10px] text-gray-600 uppercase tracking-widest mb-1">Your name *</label>
-                <input value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                  placeholder="Alex Johnson" className="w-full bg-transparent text-white text-sm placeholder-gray-700 focus:outline-none" />
+                <input
+                  value={form.username}
+                  onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+                  placeholder="Alex Johnson"
+                  className="w-full bg-transparent text-white text-sm placeholder-gray-700 focus:outline-none"
+                />
               </div>
               <div className="bg-[#111318] border border-white/8 rounded-xl px-3 py-2.5 focus-within:border-violet-400/30 transition-all">
                 <label className="block text-[10px] text-gray-600 uppercase tracking-widest mb-1">Email *</label>
-                <input value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                  placeholder="you@email.com" type="email" className="w-full bg-transparent text-white text-sm placeholder-gray-700 focus:outline-none" />
+                <input
+                  value={form.email}
+                  onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                  placeholder="you@email.com"
+                  type="email"
+                  className="w-full bg-transparent text-white text-sm placeholder-gray-700 focus:outline-none"
+                />
               </div>
             </div>
 
@@ -459,9 +479,41 @@ const TestimonialForm = ({ spaceinfo, spacename, onClose, onSuccess }) => {
               }
             </div>
 
+            {/*
+              ── HONEYPOT FIELD ──────────────────────────────────────────────
+              Invisible to real users via CSS absolute positioning off-screen.
+              Bots that fill all form fields will populate this, triggering
+              the silent reject on the backend. Never use type="hidden" —
+              modern bots skip those. CSS-hidden fields fool them.
+            */}
+            <input
+              name="_gotcha"
+              type="text"
+              tabIndex="-1"
+              autoComplete="off"
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: '-9999px',
+                top: 'auto',
+                opacity: 0,
+                height: 0,
+                width: 0,
+                pointerEvents: 'none',
+                overflow: 'hidden',
+              }}
+              value={form._gotcha}
+              onChange={e => setForm(f => ({ ...f, _gotcha: e.target.value }))}
+            />
+
             {/* Consent */}
             <label className="flex items-start gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} className="mt-0.5 accent-violet-500" />
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={e => setAgreed(e.target.checked)}
+                className="mt-0.5 accent-violet-500"
+              />
               <span className="text-gray-600 text-xs leading-relaxed">
                 I give permission to use this testimonial for marketing purposes
               </span>
@@ -469,12 +521,21 @@ const TestimonialForm = ({ spaceinfo, spacename, onClose, onSuccess }) => {
           </div>
 
           <div className="p-5 border-t border-white/8 flex gap-3">
-            <button type="button" onClick={onClose} className="px-4 py-2.5 bg-white/4 border border-white/8 hover:bg-white/8 text-gray-400 rounded-xl text-sm transition-all">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 bg-white/4 border border-white/8 hover:bg-white/8 text-gray-400 rounded-xl text-sm transition-all"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={submitting || uploading}
+            <button
+              type="submit"
+              disabled={submitting || uploading}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all
-                ${submitting || uploading ? 'bg-violet-600/30 text-violet-400/50 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20'}`}>
+                ${submitting || uploading
+                  ? 'bg-violet-600/30 text-violet-400/50 cursor-not-allowed'
+                  : 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20'}`}
+            >
               {submitting
                 ? <><RefreshCw size={14} className="animate-spin" /> Submitting…</>
                 : <><Check size={14} /> Submit Testimonial</>}
@@ -550,15 +611,16 @@ export default function TestimonialsCollection() {
             </p>
           </div>
           {(spaceinfo?.redirectPageUrl || spaceinfo?.redirect_url) && (
-            <a href={spaceinfo.redirectPageUrl || spaceinfo.redirect_url}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold text-sm transition-all">
+            <a
+              href={spaceinfo.redirectPageUrl || spaceinfo.redirect_url}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-semibold text-sm transition-all"
+            >
               Continue →
             </a>
           )}
         </div>
       ) : (
         <div className="w-full max-w-md bg-[#0d1117] border border-white/8 rounded-3xl overflow-hidden shadow-2xl">
-          {/* Subtle top accent */}
           <div className="h-0.5 w-full bg-gradient-to-r from-violet-600 via-purple-500 to-indigo-600" />
 
           {/* Header */}

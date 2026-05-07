@@ -13,6 +13,7 @@ import TestimonialsCollection from './components/TestimonialsCollection';
 import TestimonialWall from './components/TestimonialWall';
 import EditSpace from './components/Editspace';
 
+
 function App() {
 	return (
 		<BrowserRouter>
@@ -27,6 +28,7 @@ function App() {
 						<Route path='/dashboard' element={<Dashboard />} />
 						<Route path='/space/:spacename' element={<Space />} />
 						<Route path='/edit/:spaceName' element={<EditSpace></EditSpace>} />
+			
 						<Route
 							path='/testimonial.to/:spacename'
 							element={<TestimonialsCollection />}
