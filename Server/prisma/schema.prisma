@@ -57,6 +57,7 @@ model Testimonial {
   imageURL String
   UserImageURL String
   Rating       Int
+  videoUrl      String   @default("") 
   space        Space   @relation(fields: [spaceId], references: [id])
   spaceId      String
   submittedAt  DateTime @default(now())

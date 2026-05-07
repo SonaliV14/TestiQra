@@ -59,6 +59,7 @@ SendtestimonialsRouter.post("/", async (req, res) => {
   const { username, email, isTextContent, content, imageURL, UserImageURL } =
     req.body.testimonial || {};
   const Rating = req.body.rating;
+  const videoUrl = req.body.videoUrl || null;
 
   // ── 3. Basic validation ────────────────────────────────────────────────────
   if (!email || !username || !spacename) {
