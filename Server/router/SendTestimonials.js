@@ -96,6 +96,7 @@ SendtestimonialsRouter.post("/", async (req, res) => {
         imageURL: imageURL || "",
         UserImageURL: UserImageURL || "",
         Rating,
+        videoUrl: videoUrl || "",
         spaceId: spaceinfo.id,
       },
     });
