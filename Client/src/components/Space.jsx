@@ -619,7 +619,7 @@ export default function Space() {
   const [showAIPicker, setShowAIPicker] = useState(false);
   const [stats, setStats] = useState({ total: 0, liked: 0, avgRating: 0, video: 0 });
   const [copied, setCopied] = useState(false);
-  const shareableUrl = `${FRONTEND_URL}/testimonial.to/${spacename}`;
+  const shareableUrl = `${FRONTEND_URL}/testimonial.in/${spacename}`;
 
   const copyShareUrl = () => {
     navigator.clipboard.writeText(shareableUrl);
