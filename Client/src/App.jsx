@@ -30,7 +30,7 @@ function App() {
 						<Route path='/edit/:spaceName' element={<EditSpace></EditSpace>} />
 			
 						<Route
-							path='/testimonial.to/:spacename'
+							path='/testimonial.in/:spacename'
 							element={<TestimonialsCollection />}
 						/>
 						<Route
