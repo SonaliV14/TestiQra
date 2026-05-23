@@ -15,7 +15,7 @@ SpaceinfofetchRouter.get("/", Authmiddlware, async (req, res) => {
   try {
     const Findspaceinfo = await prisma.space.findUnique({
       where: {
-        space_name: spacename, // Assuming `req.email` is set by Authmiddlware
+        space_name: spacename, 
       },
       include: {
         questions: true,
@@ -41,7 +41,7 @@ SpaceinfofetchRouter.get("/edit", Authmiddlware, async (req, res) => {
   try {
     const Findspaceinfo = await prisma.space.findUnique({
       where: {
-        space_name: spaceName, // Assuming `req.email` is set by Authmiddlware
+        space_name: spaceName, 
       },
       include: {
         questions: true,

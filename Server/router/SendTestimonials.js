@@ -5,13 +5,13 @@ const prisma = new PrismaClient();
 const SendtestimonialsRouter = express.Router();
 
 // ─── In-memory stores ─────────────────────────────────────────────────────────
-const emailSubmissions = new Map(); // email → [timestamps]
-const ipSubmissions    = new Map(); // ip    → [timestamps]
+const emailSubmissions = new Map(); 
+const ipSubmissions    = new Map(); 
 const blockedIPs       = new Set();
 
 const RATE_LIMITS = {
   email: { max: 3,  windowMs: 24 * 60 * 60 * 1000 }, // 3 per email per 24h
-  ip:    { max: 10, windowMs: 60 * 60 * 1000 },       // 10 per IP per hour
+  ip:    { max: 5, windowMs: 60 * 60 * 1000 },       // 5 per IP per hour
 };
 
 const isRateLimited = (store, key, max, windowMs) => {

@@ -33,7 +33,7 @@ AiRouter.post("/", async (req, res) => {
       ],
       max_tokens: 1024,
       temperature: 0.4,
-      response_format: { type: "json_object" }, // Force JSON mode
+      response_format: { type: "json_object" }, 
     });
 
     const result = completion.choices?.[0]?.message?.content;

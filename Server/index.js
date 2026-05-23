@@ -13,7 +13,14 @@ import AiRouter from "./router/AiRouter.js";
 import EmailRouter from "./router/EmailRouter.js";
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    process.env.FRONTEND_URL, 
+  ],
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use("/api/v1/user", UserRouter);
 app.use("/api/v1/space-creation", SpaceCreationRouter);
@@ -28,6 +35,12 @@ app.use("/api/v1/ai", AiRouter);
 app.use('/api/v1/email', EmailRouter);
 
 // req and res (request and response) 
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+  next();
+});
+
 app.get("/", (req, res) => {
   res.send("Hello World");
 });

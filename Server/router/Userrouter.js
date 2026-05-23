@@ -45,7 +45,7 @@ UserRouter.post("/signup", async (req, res) => {
       data: {
         email,
         firstName: firstname,
-        password, // Note: You should hash the password before storing
+        password, 
         authProvider: "local",
       },
     });
@@ -79,8 +79,8 @@ UserRouter.post("/signin", async (req, res) => {
     const user = await prisma.user.findUnique({
       where: {
         email,
-        password, // Note: You should compare hashed passwords
-        authProvider: "local", // Check for local auth provider
+        password, 
+        authProvider: "local", 
       },
     });
 
@@ -106,9 +106,16 @@ UserRouter.post("/signin", async (req, res) => {
 
 UserRouter.post("/google-signin", async (req, res) => {
   try {
-    const { token } = req.body; // Receive the ID token from the client
+    const { token } = req.body; 
 
     // Verify the Google token
+        if (!token) {
+      return res.status(400).json({ error: "No token provided" });
+    }
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return res.status(500).json({ error: "Server missing GOOGLE_CLIENT_ID" });
+    }
+    
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
